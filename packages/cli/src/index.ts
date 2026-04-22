@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { pathToFileURL } from "node:url";
+
 import { SourceplaneClient } from "@sourceplane/sdk";
 
 export interface CliOptions {
@@ -52,4 +54,8 @@ async function main(): Promise<void> {
   );
 }
 
-void main();
+const isDirectExecution = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isDirectExecution) {
+  void main();
+}

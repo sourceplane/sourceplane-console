@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { SourceplaneClient } from "@sourceplane/sdk";
+import { SourceplaneClient } from "../src/client.js";
 
 describe("SourceplaneClient", () => {
   it("requests route groups from the public API", async () => {

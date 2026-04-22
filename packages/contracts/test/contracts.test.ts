@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import YAML from "yaml";
 
-import { contractSchemaPaths, type ContractSchemaName } from "@sourceplane/contracts";
+import { contractSchemaPaths, type ContractSchemaName } from "../src/index.js";
 
 const workspaceRoot = resolve(import.meta.dirname, "..", "..", "..");
 const require = createRequire(import.meta.url);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createRequestContext } from "@sourceplane/shared";
+import { createRequestContext } from "../src/http.js";
 
 describe("createRequestContext", () => {
   it("generates a fresh request id for public requests", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatOutput, parseCliArgs } from "@sourceplane/cli";
+import { formatOutput, parseCliArgs } from "../src/index.js";
 
 describe("cli formatting", () => {
   it("parses the base URL flag and command arguments", () => {
