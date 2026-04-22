@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "deploy": "pnpm build && wrangler deploy",
+    "deploy": "pnpm build && node ../../tooling/scripts/run-wrangler-deploy.mjs",
     "dev": "vite",
     "lint": "eslint src",
     "test": "vitest run --passWithNoTests",

@@ -10,7 +10,7 @@ export type IdentityWorkerEnv = SourceplaneWorkerEnv;
 
 const worker = {
   fetch(request: Request, env: IdentityWorkerEnv): Response {
-    const context = createRequestContext(request);
+    const context = createRequestContext(request, { trustRequestId: true });
     const stage = parseDeploymentEnvironment(env.ENVIRONMENT);
     const url = new URL(request.url);
 

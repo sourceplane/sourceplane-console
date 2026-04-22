@@ -54,4 +54,56 @@ describe("api-edge service binding pattern", () => {
     );
     expect(payload.data.upstream.data.receivedRequestId).toBe(payload.meta.requestId);
   });
+
+  it("preserves upstream error status codes on auth ping", async () => {
+    const env: ApiEdgeEnv = {
+      APP_NAME: "api-edge",
+      ENVIRONMENT: "local",
+      IDENTITY: createServiceBinding(
+        () =>
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "forbidden",
+                details: {
+                  reason: "missing_session"
+                },
+                message: "No active session.",
+                requestId: "req_identity"
+              }
+            }),
+            {
+              headers: {
+                "content-type": "application/json; charset=utf-8"
+              },
+              status: 403
+            }
+          )
+      )
+    };
+
+    const response = await apiEdgeWorker.fetch(
+      new Request("https://api.sourceplane.test/v1/auth/ping"),
+      env,
+      {} as ExecutionContext
+    );
+
+    expect(response.status).toBe(403);
+
+    const payload = (await response.json()) as {
+      error: {
+        code: string;
+        details: Record<string, unknown>;
+        message: string;
+        requestId: string;
+      };
+    };
+
+    expect(payload.error.code).toBe("forbidden");
+    expect(payload.error.details).toEqual({
+      reason: "missing_session"
+    });
+    expect(payload.error.message).toBe("No active session.");
+    expect(payload.error.requestId).toMatch(/^req_[a-f0-9]{20}$/);
+  });
 });

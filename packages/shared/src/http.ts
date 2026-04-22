@@ -6,6 +6,10 @@ export interface RequestContext {
   traceparent: string | null;
 }
 
+export interface CreateRequestContextOptions {
+  trustRequestId?: boolean;
+}
+
 export class SourceplaneHttpError extends Error {
   constructor(
     public readonly status: number,
@@ -21,10 +25,15 @@ export function createRequestId(prefix = "req"): string {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
 }
 
-export function createRequestContext(request: Request): RequestContext {
+export function createRequestContext(
+  request: Request,
+  options: CreateRequestContextOptions = {}
+): RequestContext {
+  const forwardedRequestId = request.headers.get("x-sourceplane-request-id");
+
   return {
     idempotencyKey: request.headers.get("Idempotency-Key"),
-    requestId: request.headers.get("x-sourceplane-request-id") ?? createRequestId(),
+    requestId: options.trustRequestId && forwardedRequestId ? forwardedRequestId : createRequestId(),
     traceparent: request.headers.get("traceparent")
   };
 }

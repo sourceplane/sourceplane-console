@@ -12,7 +12,7 @@ on:
           - preview
           - production
       workspace:
-        description: Deploy a single workspace or use auto discovery
+        description: Deploy a single workspace or auto-discover changes from the selected ref
         default: auto
         required: true
         type: choice
@@ -34,6 +34,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -51,11 +53,21 @@ jobs:
               echo "target_environment=$target_environment" >> "$GITHUB_OUTPUT"
               exit 0
             fi
+
+            default_branch="${{ github.event.repository.default_branch }}"
+            git fetch --no-tags origin "$default_branch:refs/remotes/origin/$default_branch"
+
+            if git merge-base --is-ancestor "${{ github.sha }}" "origin/$default_branch"; then
+              base_ref=$(git rev-parse "${{ github.sha }}^" 2>/dev/null || printf '')
+            else
+              base_ref=$(git merge-base "origin/$default_branch" "${{ github.sha }}")
+            fi
           else
             target_environment="preview"
+            base_ref="${{ github.event.before }}"
           fi
 
-          matrix=$(node tooling/scripts/resolve-changed-apps.mjs "${{ github.event.before }}" "${{ github.sha }}")
+          matrix=$(node tooling/scripts/resolve-changed-apps.mjs "$base_ref" "${{ github.sha }}")
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
           echo "target_environment=$target_environment" >> "$GITHUB_OUTPUT"
 
@@ -63,10 +75,6 @@ jobs:
     needs: discover
     if: ${{ needs.discover.outputs.matrix != '[]' }}
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        workspace: ${{ fromJson(needs.discover.outputs.matrix) }}
     environment: ${{ needs.discover.outputs.target_environment }}
     steps:
       - name: Checkout
@@ -86,8 +94,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Deploy workspace
+      - name: Deploy workspaces
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: pnpm --filter @sourceplane/${{ matrix.workspace }} deploy -- --env ${{ needs.discover.outputs.target_environment }}
+          WORKSPACE_MATRIX: ${{ needs.discover.outputs.matrix }}
+          TARGET_ENVIRONMENT: ${{ needs.discover.outputs.target_environment }}
+        shell: bash
+        run: |
+          ordered_workspaces=$(node -e 'const workspaces = JSON.parse(process.env.WORKSPACE_MATRIX); const deployOrder = ["identity-worker", "api-edge", "web-console"]; for (const workspace of deployOrder) { if (workspaces.includes(workspace)) console.log(workspace); }')
+
+          while IFS= read -r workspace; do
+            [[ -z "$workspace" ]] && continue
+            pnpm --filter "@sourceplane/${workspace}..." build
+            pnpm --filter "@sourceplane/${workspace}" deploy -- --env "$TARGET_ENVIRONMENT"
+          done <<< "$ordered_workspaces"

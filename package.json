@@ -9,7 +9,7 @@
   "scripts": {
     "build": "turbo run build",
     "contract:test": "turbo run contract:test",
-    "deploy": "turbo run deploy",
+    "deploy": "turbo run deploy --",
     "dev": "turbo run dev --parallel --filter=@sourceplane/api-edge --filter=@sourceplane/web-console",
     "format": "prettier --check .",
     "format:write": "prettier --write .",

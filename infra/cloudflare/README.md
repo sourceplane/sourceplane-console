@@ -6,6 +6,8 @@ This scaffold uses three deployment stages:
 - `preview`: non-production Cloudflare environment for PR or main-branch previews
 - `production`: stable environment for promoted deploys
 
+Internal workers should not expose a public `workers.dev` surface in preview or production. They are deployed so service bindings can target them, but they remain reachable only through internal bindings.
+
 Secrets policy:
 
 - do not commit `.env` files

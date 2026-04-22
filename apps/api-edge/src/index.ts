@@ -1,4 +1,4 @@
-import { publicRouteGroups } from "@sourceplane/contracts";
+import { publicRouteGroups, sourceplaneErrorCodes, type ApiErrorEnvelope } from "@sourceplane/contracts";
 import {
   createRequestContext,
   hasServiceBinding,
@@ -15,6 +15,43 @@ export interface ApiEdgeEnv extends SourceplaneWorkerEnv {
 
 const authPingPath = "/v1/auth/ping";
 const systemRoutesPath = "/v1/system/routes";
+const sourceplaneErrorCodeSet = new Set(sourceplaneErrorCodes);
+
+function isSourceplaneErrorCode(value: string): value is ApiErrorEnvelope["error"]["code"] {
+  return sourceplaneErrorCodeSet.has(value as ApiErrorEnvelope["error"]["code"]);
+}
+
+function getUpstreamError(payload: unknown): ApiErrorEnvelope["error"] | null {
+  if (!payload || typeof payload !== "object" || !("error" in payload)) {
+    return null;
+  }
+
+  const error = payload.error;
+  if (!error || typeof error !== "object") {
+    return null;
+  }
+
+  const code = "code" in error ? error.code : null;
+  const message = "message" in error ? error.message : null;
+  const details = "details" in error ? error.details : null;
+
+  if (
+    typeof code !== "string" ||
+    !isSourceplaneErrorCode(code) ||
+    typeof message !== "string" ||
+    !details ||
+    typeof details !== "object"
+  ) {
+    return null;
+  }
+
+  return {
+    code,
+    details: details as Record<string, unknown>,
+    message,
+    requestId: "requestId" in error && typeof error.requestId === "string" ? error.requestId : ""
+  };
+}
 
 const worker = {
   async fetch(request: Request, env: ApiEdgeEnv): Promise<Response> {
@@ -70,6 +107,19 @@ const worker = {
         );
 
         const upstreamPayload = await upstreamResponse.json();
+
+        if (!upstreamResponse.ok) {
+          const upstreamError = getUpstreamError(upstreamPayload);
+
+          return jsonError(upstreamResponse.status, {
+            code: upstreamError?.code ?? "internal_error",
+            details: upstreamError?.details ?? {
+              upstream: upstreamPayload
+            },
+            message: upstreamError?.message ?? "The identity service returned an error.",
+            requestId: context.requestId
+          });
+        }
 
         return jsonSuccess(
           {

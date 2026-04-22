@@ -9,7 +9,7 @@
   "exports": {
     ".": {
       "types": "./src/index.tsx",
-      "import": "./src/index.tsx"
+      "import": "./dist/index.js"
     }
   },
   "scripts": {
