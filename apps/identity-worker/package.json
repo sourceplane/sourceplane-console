@@ -1,0 +1,26 @@
+{
+  "name": "@sourceplane/identity-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "deploy": "node ../../tooling/scripts/run-wrangler-deploy.mjs",
+    "dev": "wrangler dev --local",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@sourceplane/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

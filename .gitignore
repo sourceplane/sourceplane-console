@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.env.*
+.pnpm-store
+.turbo
+.wrangler
+coverage
+dist
+*.tsbuildinfo
+node_modules
+tmp
