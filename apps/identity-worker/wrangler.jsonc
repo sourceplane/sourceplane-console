@@ -1,0 +1,27 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "sourceplane-identity-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "APP_NAME": "identity-worker",
+    "ENVIRONMENT": "local"
+  },
+  "env": {
+    "preview": {
+      "name": "sourceplane-identity-worker-preview",
+      "vars": {
+        "APP_NAME": "identity-worker",
+        "ENVIRONMENT": "preview"
+      }
+    },
+    "production": {
+      "name": "sourceplane-identity-worker-production",
+      "vars": {
+        "APP_NAME": "identity-worker",
+        "ENVIRONMENT": "production"
+      }
+    }
+  }
+}

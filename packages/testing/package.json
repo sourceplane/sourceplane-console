@@ -1,0 +1,27 @@
+{
+  "name": "@sourceplane/testing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@sourceplane/shared": "workspace:*",
+    "ajv": "^8",
+    "ajv-formats": "^3",
+    "yaml": "^2"
+  }
+}

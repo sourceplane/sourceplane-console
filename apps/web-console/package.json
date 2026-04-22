@@ -1,0 +1,25 @@
+{
+  "name": "@sourceplane/web-console",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "deploy": "pnpm build && wrangler deploy",
+    "dev": "vite",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@sourceplane/contracts": "workspace:*",
+    "@sourceplane/ui": "workspace:*",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5",
+    "vite": "^7",
+    "wrangler": "^4"
+  }
+}

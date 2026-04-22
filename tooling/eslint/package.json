@@ -1,0 +1,11 @@
+{
+  "name": "@sourceplane/eslint-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base": "./base.mjs",
+    "./react": "./react.mjs",
+    "./worker": "./worker.mjs"
+  }
+}

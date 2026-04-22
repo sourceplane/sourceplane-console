@@ -1,0 +1,93 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target Cloudflare environment
+        default: preview
+        required: true
+        type: choice
+        options:
+          - preview
+          - production
+      workspace:
+        description: Deploy a single workspace or use auto discovery
+        default: auto
+        required: true
+        type: choice
+        options:
+          - auto
+          - api-edge
+          - identity-worker
+          - web-console
+  push:
+    branches:
+      - main
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      target_environment: ${{ steps.matrix.outputs.target_environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Resolve deployment matrix
+        id: matrix
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            target_environment="${{ inputs.environment }}"
+            if [[ "${{ inputs.workspace }}" != "auto" ]]; then
+              echo "matrix=[\"${{ inputs.workspace }}\"]" >> "$GITHUB_OUTPUT"
+              echo "target_environment=$target_environment" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          else
+            target_environment="preview"
+          fi
+
+          matrix=$(node tooling/scripts/resolve-changed-apps.mjs "${{ github.event.before }}" "${{ github.sha }}")
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "target_environment=$target_environment" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: discover
+    if: ${{ needs.discover.outputs.matrix != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: ${{ fromJson(needs.discover.outputs.matrix) }}
+    environment: ${{ needs.discover.outputs.target_environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.7.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          cache: pnpm
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Deploy workspace
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pnpm --filter @sourceplane/${{ matrix.workspace }} deploy -- --env ${{ needs.discover.outputs.target_environment }}

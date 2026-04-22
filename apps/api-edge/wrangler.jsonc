@@ -1,0 +1,45 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "sourceplane-api-edge",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "APP_NAME": "api-edge",
+    "ENVIRONMENT": "local"
+  },
+  "services": [
+    {
+      "binding": "IDENTITY",
+      "service": "sourceplane-identity-worker"
+    }
+  ],
+  "env": {
+    "preview": {
+      "name": "sourceplane-api-edge-preview",
+      "vars": {
+        "APP_NAME": "api-edge",
+        "ENVIRONMENT": "preview"
+      },
+      "services": [
+        {
+          "binding": "IDENTITY",
+          "service": "sourceplane-identity-worker-preview"
+        }
+      ]
+    },
+    "production": {
+      "name": "sourceplane-api-edge-production",
+      "vars": {
+        "APP_NAME": "api-edge",
+        "ENVIRONMENT": "production"
+      },
+      "services": [
+        {
+          "binding": "IDENTITY",
+          "service": "sourceplane-identity-worker-production"
+        }
+      ]
+    }
+  }
+}

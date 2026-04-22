@@ -1,0 +1,31 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "sourceplane-web-console",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-04-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist"
+  },
+  "vars": {
+    "APP_NAME": "web-console",
+    "ENVIRONMENT": "local"
+  },
+  "env": {
+    "preview": {
+      "name": "sourceplane-web-console-preview",
+      "vars": {
+        "APP_NAME": "web-console",
+        "ENVIRONMENT": "preview"
+      }
+    },
+    "production": {
+      "name": "sourceplane-web-console-production",
+      "vars": {
+        "APP_NAME": "web-console",
+        "ENVIRONMENT": "production"
+      }
+    }
+  }
+}
