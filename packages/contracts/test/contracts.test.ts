@@ -13,6 +13,11 @@ import {
   contractSchemaNames,
   contractSchemaPaths,
   createApiSuccessEnvelopeSchema,
+  identityResolveResultSchema,
+  invalidIdentityResolveResultFixture,
+  invalidListApiKeysResponseFixture,
+  invalidLoginCompleteResponseFixture,
+  invalidLoginStartRequestFixture,
   eventEnvelopeSchema,
   invalidApiErrorFixture,
   invalidApiSuccessFixture,
@@ -21,6 +26,10 @@ import {
   invalidComponentManifestFixture,
   invalidEventEnvelopeFixture,
   invalidResourceFixture,
+  listApiKeysResponseSchema,
+  loginCompleteResponseSchema,
+  loginStartRequestSchema,
+  loginStartResponseSchema,
   resourceContractSchema,
   validApiErrorFixture,
   validApiSuccessFixture,
@@ -28,6 +37,10 @@ import {
   validAuthorizationResponseFixture,
   validComponentManifestFixture,
   validEventEnvelopeFixture,
+  validIdentityResolveResultFixture,
+  validListApiKeysResponseFixture,
+  validLoginCompleteResponseFixture,
+  validLoginStartRequestFixture,
   validResourceFixture
 } from "../src/index.js";
 import { loadPackagedContractSchema, readPackagedContractSchemaText } from "../src/node.js";
@@ -118,6 +131,10 @@ describe("exported fixtures", () => {
     expect(apiErrorEnvelopeSchema.parse(validApiErrorFixture)).toEqual(validApiErrorFixture);
     expect(authorizationRequestSchema.parse(validAuthorizationRequestFixture)).toEqual(validAuthorizationRequestFixture);
     expect(authorizationResponseSchema.parse(validAuthorizationResponseFixture)).toEqual(validAuthorizationResponseFixture);
+    expect(identityResolveResultSchema.parse(validIdentityResolveResultFixture)).toEqual(validIdentityResolveResultFixture);
+    expect(loginStartRequestSchema.parse(validLoginStartRequestFixture)).toEqual(validLoginStartRequestFixture);
+    expect(loginCompleteResponseSchema.parse(validLoginCompleteResponseFixture)).toEqual(validLoginCompleteResponseFixture);
+    expect(listApiKeysResponseSchema.parse(validListApiKeysResponseFixture)).toEqual(validListApiKeysResponseFixture);
     expect(eventEnvelopeSchema.parse(validEventEnvelopeFixture)).toEqual(validEventEnvelopeFixture);
     expect(resourceContractSchema.parse(validResourceFixture)).toEqual(validResourceFixture);
     expect(componentManifestSchema.parse(validComponentManifestFixture)).toEqual(validComponentManifestFixture);
@@ -144,6 +161,26 @@ describe("exported fixtures", () => {
         expectedPath: "$.policyVersion",
         schema: authorizationResponseSchema,
         value: invalidAuthorizationResponseFixture
+      },
+      {
+        expectedPath: "$.actor.type",
+        schema: identityResolveResultSchema,
+        value: invalidIdentityResolveResultFixture
+      },
+      {
+        expectedPath: "$.email",
+        schema: loginStartRequestSchema,
+        value: invalidLoginStartRequestFixture
+      },
+      {
+        expectedPath: "$.session.tokenType",
+        schema: loginCompleteResponseSchema,
+        value: invalidLoginCompleteResponseFixture
+      },
+      {
+        expectedPath: "$.apiKeys[0].servicePrincipal.roleNames",
+        schema: listApiKeysResponseSchema,
+        value: invalidListApiKeysResponseFixture
       },
       {
         expectedPath: "$.actor.type",
@@ -191,5 +228,16 @@ describe("normative spec examples", () => {
 
     expect(authorizationRequestSchema.safeParse(requestExample).success).toBe(true);
     expect(authorizationResponseSchema.safeParse(responseExample).success).toBe(true);
+  });
+
+  it("keeps the identity public route examples valid", () => {
+    const identityExamples = extractJsonCodeBlocks(resolve(workspaceRoot, "specs", "components", "02-identity.md"));
+    const [loginStartRequestExample, loginStartResponseExample, loginCompleteResponseExample, listApiKeysResponseExample] =
+      identityExamples;
+
+    expect(loginStartRequestSchema.safeParse(loginStartRequestExample).success).toBe(true);
+    expect(createApiSuccessEnvelopeSchema(loginStartResponseSchema).safeParse(loginStartResponseExample).success).toBe(true);
+    expect(createApiSuccessEnvelopeSchema(loginCompleteResponseSchema).safeParse(loginCompleteResponseExample).success).toBe(true);
+    expect(createApiSuccessEnvelopeSchema(listApiKeysResponseSchema).safeParse(listApiKeysResponseExample).success).toBe(true);
   });
 });

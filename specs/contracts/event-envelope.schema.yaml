@@ -19,7 +19,7 @@ properties:
     description: Stable event identifier. Must be globally unique.
   type:
     type: string
-    pattern: "^[a-z0-9]+(\\.[a-z0-9_]+)+$"
+    pattern: "^[a-z0-9_]+(\\.[a-z0-9_]+)+$"
     description: Dot-separated event name such as project.created or deployment.failed.
   version:
     type: integer

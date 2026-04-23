@@ -13,14 +13,16 @@
     "build": "tsc -p tsconfig.json",
     "deploy": "node ../../tooling/scripts/run-wrangler-deploy.mjs",
     "dev": "wrangler dev --local",
-    "lint": "eslint src",
-    "test": "vitest run --passWithNoTests",
+    "lint": "eslint src test",
+    "test": "vitest run test/identity-worker.integration.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@sourceplane/contracts": "workspace:*",
     "@sourceplane/shared": "workspace:*"
   },
   "devDependencies": {
+    "@sourceplane/testing": "workspace:*",
     "wrangler": "^4"
   }
 }

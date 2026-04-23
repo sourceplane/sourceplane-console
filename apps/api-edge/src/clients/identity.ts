@@ -1,4 +1,4 @@
-import { rbacActorSchema } from "@sourceplane/contracts";
+import { identityResolveResultSchema, type IdentityResolveResult } from "@sourceplane/contracts";
 
 import type { ApiEdgeEnv } from "../env.js";
 import type { ServiceRequestMetadata } from "../types.js";
@@ -12,11 +12,7 @@ export interface IdentityPingResult {
   stage?: string;
 }
 
-export interface ResolvedIdentity {
-  actor: ReturnType<typeof rbacActorSchema.parse> | null;
-  organizationId?: string | null;
-  sessionId?: string | null;
-}
+export type ResolvedIdentity = IdentityResolveResult;
 
 export interface IdentityEdgeClient extends PublicRouteClient {
   ping(metadata: ServiceRequestMetadata): Promise<IdentityPingResult>;
@@ -51,43 +47,7 @@ export function createIdentityClient(env: ApiEdgeEnv): IdentityEdgeClient {
         path: "/internal/auth/resolve"
       });
 
-      return assertResolvedIdentity(payload);
+      return identityResolveResultSchema.parse(payload);
     }
   };
-}
-
-function assertResolvedIdentity(payload: unknown): ResolvedIdentity {
-  if (!payload || typeof payload !== "object") {
-    throw new TypeError("Identity resolution payload must be an object.");
-  }
-
-  const actorValue = "actor" in payload ? payload.actor : undefined;
-  const organizationIdValue = "organizationId" in payload ? payload.organizationId : undefined;
-  const sessionIdValue = "sessionId" in payload ? payload.sessionId : undefined;
-
-  if (actorValue !== null && actorValue !== undefined) {
-    rbacActorSchema.parse(actorValue);
-  }
-
-  if (!isNullableString(organizationIdValue) || !isNullableString(sessionIdValue)) {
-    throw new TypeError("Identity resolution payload contained invalid optional fields.");
-  }
-
-  const resolvedIdentity: ResolvedIdentity = {
-    actor: actorValue === undefined ? null : (actorValue as ResolvedIdentity["actor"])
-  };
-
-  if (organizationIdValue !== undefined) {
-    resolvedIdentity.organizationId = organizationIdValue;
-  }
-
-  if (sessionIdValue !== undefined) {
-    resolvedIdentity.sessionId = sessionIdValue;
-  }
-
-  return resolvedIdentity;
-}
-
-function isNullableString(value: unknown): value is string | null | undefined {
-  return value === undefined || value === null || typeof value === "string";
 }
