@@ -22,6 +22,7 @@ These exports are intended for downstream use and should change additively whene
 	- API success and error envelopes
 	- pagination and idempotency conventions
 	- tenancy scopes and authorization request and response payloads
+	- identity login, session, API-key, and internal auth-resolution payloads
 	- event envelopes
 	- resource contracts
 	- component manifests

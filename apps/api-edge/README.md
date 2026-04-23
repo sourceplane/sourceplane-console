@@ -69,16 +69,22 @@ Later domain Workers can plug into the edge without restructuring route code by 
 	 - forwarded headers include request ID, traceparent, optional idempotency key, resolved actor headers, and resolved tenant headers
 2. Identity-specific hooks:
 	 - `GET /internal/ping`
-	 - `POST /internal/auth/resolve` returning JSON shaped like:
+	 - `POST /internal/auth/resolve` returning a shared success envelope whose `data` is shaped like:
 
 ```json
 {
-	"actor": {
-		"type": "user",
-		"id": "usr_123"
+	"data": {
+		"actor": {
+			"type": "user",
+			"id": "usr_123"
+		},
+		"organizationId": "org_123",
+		"sessionId": "ses_123"
 	},
-	"organizationId": "org_123",
-	"sessionId": "ses_123"
+	"meta": {
+		"cursor": null,
+		"requestId": "req_123"
+	},
 }
 ```
 

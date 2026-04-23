@@ -50,7 +50,7 @@ export function createEventEnvelopeSchema<TPayloadSchema extends z.ZodTypeAny>(p
   return z
     .object({
       id: z.string().min(1),
-      type: z.string().regex(/^[a-z0-9]+(\.[a-z0-9_]+)+$/),
+      type: z.string().regex(/^[a-z0-9_]+(\.[a-z0-9_]+)+$/),
       version: z.number().int().min(1),
       source: z.string().min(1),
       occurredAt: z.string().datetime({ offset: true }),

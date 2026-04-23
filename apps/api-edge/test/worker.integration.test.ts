@@ -1,9 +1,18 @@
+import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { isApiErrorEnvelope, type ApiErrorEnvelope, type ApiSuccessEnvelope, createSuccessResponse } from "@sourceplane/contracts";
+import {
+  createSuccessResponse,
+  isApiErrorEnvelope,
+  loginCompleteResponseSchema,
+  loginStartResponseSchema,
+  type ApiErrorEnvelope,
+  type ApiSuccessEnvelope
+} from "@sourceplane/contracts";
 import { createApiEdgeApp, type ApiEdgeEnv } from "@sourceplane/api-edge";
 import identityWorker, { type IdentityWorkerEnv } from "@sourceplane/identity-worker";
-import { createServiceBinding } from "@sourceplane/testing";
+import { applyD1Migrations, createServiceBinding, createTestD1Database } from "@sourceplane/testing";
 
 import { MemoryIdempotencyStore } from "../src/testing/memory-idempotency-store.js";
 
@@ -13,6 +22,8 @@ const executionContext: ExecutionContext = {
     void promise;
   }
 };
+
+const identityMigrationsDirectory = resolve(import.meta.dirname, "..", "..", "identity-worker", "migrations");
 
 interface RouteInventoryData {
   groups: Array<{ clientKey: string; group: string; summary: string }>;
@@ -101,6 +112,23 @@ async function readJsonValue(response: Response): Promise<unknown> {
   return parsedValue;
 }
 
+async function createIdentityWorkerTestHarness(): Promise<{ close(): void; env: IdentityWorkerEnv }> {
+  const database = createTestD1Database();
+  await applyD1Migrations(database.binding, identityMigrationsDirectory);
+
+  return {
+    close(): void {
+      database.close();
+    },
+    env: {
+      APP_NAME: "identity-worker",
+      ENVIRONMENT: "local",
+      IDENTITY_DB: database.binding,
+      IDENTITY_TOKEN_HASH_SECRET: "identity-test-secret"
+    }
+  };
+}
+
 describe("api-edge transport behavior", () => {
   it("returns normalized route inventory for /v1", async () => {
     const response = await createApiEdgeApp().fetch(
@@ -122,42 +150,130 @@ describe("api-edge transport behavior", () => {
   });
 
   it("forwards request IDs and trace context to the identity binding", async () => {
+    const identityHarness = await createIdentityWorkerTestHarness();
     const worker = createApiEdgeApp();
-    const env: ApiEdgeEnv = {
-      APP_NAME: "api-edge",
-      ENVIRONMENT: "local",
-      IDENTITY: createServiceBinding((request) =>
-        identityWorker.fetch(
-          request,
-          {
-            APP_NAME: "identity-worker",
-            ENVIRONMENT: "local"
-          } satisfies IdentityWorkerEnv,
-          executionContext
-        )
-      )
-    };
+    try {
+      const env: ApiEdgeEnv = {
+        APP_NAME: "api-edge",
+        ENVIRONMENT: "local",
+        IDENTITY: createServiceBinding((request) => identityWorker.fetch(request, identityHarness.env, executionContext))
+      };
 
-    const response = await worker.fetch(
-      new Request("https://api.sourceplane.test/v1/auth/ping", {
-        headers: {
-          traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00"
-        }
-      }),
-      env,
-      executionContext
-    );
+      const response = await worker.fetch(
+        new Request("https://api.sourceplane.test/v1/auth/ping", {
+          headers: {
+            traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00"
+          }
+        }),
+        env,
+        executionContext
+      );
 
-    expect(response.status).toBe(200);
+      expect(response.status).toBe(200);
 
-    const payload = assertApiSuccessEnvelope(await readJsonValue(response), isAuthPingData);
+      const payload = assertApiSuccessEnvelope(await readJsonValue(response), isAuthPingData);
 
-    expect(payload.data.binding).toBe("IDENTITY");
-    expect(payload.data.upstream.service).toBe("identity-worker");
-    expect(payload.data.upstream.receivedTraceparent).toBe(
-      "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00"
-    );
-    expect(payload.data.upstream.receivedRequestId).toBe(payload.meta.requestId);
+      expect(payload.data.binding).toBe("IDENTITY");
+      expect(payload.data.upstream.service).toBe("identity-worker");
+      expect(payload.data.upstream.receivedTraceparent).toBe(
+        "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00"
+      );
+      expect(payload.data.upstream.receivedRequestId).toBe(payload.meta.requestId);
+    } finally {
+      identityHarness.close();
+    }
+  });
+
+  it("calls the real identity worker for ping and bearer auth resolution", async () => {
+    const identityHarness = await createIdentityWorkerTestHarness();
+    const worker = createApiEdgeApp({
+      idempotencyStore: new MemoryIdempotencyStore()
+    });
+
+    try {
+      const env: ApiEdgeEnv = {
+        APP_NAME: "api-edge",
+        ENVIRONMENT: "local",
+        IDENTITY: createServiceBinding((request) => identityWorker.fetch(request, identityHarness.env, executionContext))
+      };
+
+      const pingResponse = await worker.fetch(
+        new Request("https://api.sourceplane.test/v1/auth/ping"),
+        env,
+        executionContext
+      );
+
+      expect(pingResponse.status).toBe(200);
+
+      const loginStartResponse = await worker.fetch(
+        new Request("https://api.sourceplane.test/v1/auth/login/start", {
+          body: JSON.stringify({
+            email: "user@example.com"
+          }),
+          headers: {
+            "content-type": "application/json"
+          },
+          method: "POST"
+        }),
+        env,
+        executionContext
+      );
+
+      expect(loginStartResponse.status).toBe(200);
+
+      const loginStartPayload = assertApiSuccessEnvelope(await readJsonValue(loginStartResponse), isRecord);
+      const loginStartData = loginStartResponseSchema.parse(loginStartPayload.data);
+      const code = loginStartData.delivery.mode === "local_debug" ? loginStartData.delivery.code : null;
+
+      expect(code).not.toBeNull();
+
+      const loginCompleteResponse = await worker.fetch(
+        new Request("https://api.sourceplane.test/v1/auth/login/complete", {
+          body: JSON.stringify({
+            challengeId: loginStartData.challengeId,
+            code
+          }),
+          headers: {
+            "content-type": "application/json"
+          },
+          method: "POST"
+        }),
+        env,
+        executionContext
+      );
+
+      expect(loginCompleteResponse.status).toBe(200);
+
+      const loginCompletePayload = assertApiSuccessEnvelope(await readJsonValue(loginCompleteResponse), isRecord);
+      const loginCompleteData = loginCompleteResponseSchema.parse(loginCompletePayload.data);
+
+      const protectedResponse = await worker.fetch(
+        new Request("https://api.sourceplane.test/v1/projects", {
+          body: JSON.stringify({
+            name: "Acme API"
+          }),
+          headers: {
+            authorization: `Bearer ${loginCompleteData.session.token}`,
+            "content-type": "application/json"
+          },
+          method: "POST"
+        }),
+        env,
+        executionContext
+      );
+
+      expect(protectedResponse.status).toBe(400);
+
+      const payload = assertApiError(await readJsonValue(protectedResponse));
+
+      expect(payload.error.code).toBe("bad_request");
+      expect(payload.error.details).toEqual({
+        header: "Idempotency-Key",
+        route: "POST:/v1/projects"
+      });
+    } finally {
+      identityHarness.close();
+    }
   });
 
   it("maps upstream identity errors to standardized edge errors", async () => {
@@ -204,6 +320,69 @@ describe("api-edge transport behavior", () => {
     });
     expect(payload.error.message).toBe("No active session.");
     expect(payload.error.requestId).toMatch(/^req_[a-f0-9]{20}$/);
+  });
+
+  it("forwards unauthenticated login start to identity", async () => {
+    const worker = createApiEdgeApp();
+    const env: ApiEdgeEnv = {
+      APP_NAME: "api-edge",
+      ENVIRONMENT: "local",
+      IDENTITY: createServiceBinding((request) => {
+        const url = new URL(request.url);
+
+        if (url.pathname !== "/internal/edge/v1/auth/login/start" || request.method !== "POST") {
+          return new Response("not found", { status: 404 });
+        }
+
+        return new Response(
+          JSON.stringify(
+            createSuccessResponse(
+              {
+                challengeId: "chl_123",
+                delivery: {
+                  mode: "local_debug"
+                },
+                expiresAt: "2026-04-23T12:05:00.000Z"
+              },
+              {
+                requestId: request.headers.get("x-sourceplane-request-id") ?? "req_missing"
+              }
+            )
+          ),
+          {
+            headers: {
+              "content-type": "application/json; charset=utf-8"
+            }
+          }
+        );
+      })
+    };
+
+    const response = await worker.fetch(
+      new Request("https://api.sourceplane.test/v1/auth/login/start", {
+        body: JSON.stringify({
+          email: "user@example.com"
+        }),
+        headers: {
+          "content-type": "application/json"
+        },
+        method: "POST"
+      }),
+      env,
+      executionContext
+    );
+
+    expect(response.status).toBe(200);
+
+    const payload = assertApiSuccessEnvelope(await readJsonValue(response), isRecord);
+
+    expect(payload.data).toEqual({
+      challengeId: "chl_123",
+      delivery: {
+        mode: "local_debug"
+      },
+      expiresAt: "2026-04-23T12:05:00.000Z"
+    });
   });
 
   it("requires an authenticated actor for mutating routes", async () => {

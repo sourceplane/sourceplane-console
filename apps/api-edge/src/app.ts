@@ -86,8 +86,9 @@ export function createApiEdgeApp(options: ApiEdgeAppOptions = {}): ExportedHandl
             requestContext,
             tenant
           };
+          const allowsAnonymousMutation = isAnonymousAuthMutation(routeMatch.group, routeMatch.subpath, requestContext.method);
 
-          if (isMutatingMethod(requestContext.method)) {
+          if (isMutatingMethod(requestContext.method) && !allowsAnonymousMutation) {
             requireAuthenticatedActor(auth);
 
             const authorizationRequest = buildAuthorizationRequest({
@@ -119,7 +120,7 @@ export function createApiEdgeApp(options: ApiEdgeAppOptions = {}): ExportedHandl
 
           let idempotencyCacheKey: string | null = null;
           let activeIdempotencyStore: IdempotencyStore | null = null;
-          if (requestContext.method === "POST") {
+          if (requestContext.method === "POST" && !allowsAnonymousMutation) {
             requireAuthenticatedActor(auth);
 
             idempotencyCacheKey = assertIdempotencyPreconditions({
@@ -260,6 +261,14 @@ function handleHealthRoute(env: SourceplaneWorkerEnv, requestId: string): Respon
       requestId
     }
   );
+}
+
+function isAnonymousAuthMutation(routeGroup: PublicRouteGroup, subpath: string, method: string): boolean {
+  if (routeGroup !== "/v1/auth" || method !== "POST") {
+    return false;
+  }
+
+  return subpath === "/login/start" || subpath === "/login/complete";
 }
 
 function handleReadyRoute(env: ApiEdgeEnv, requestId: string): Response {

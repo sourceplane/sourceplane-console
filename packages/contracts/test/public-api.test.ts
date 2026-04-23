@@ -8,12 +8,31 @@ import {
   createSuccessResponse,
   eventEnvelopeSchema as rootEventEnvelopeSchema,
   idempotencyHeaderName,
+  identityResolveResultSchema as rootIdentityResolveResultSchema,
+  internalActorIdHeaderName,
+  internalActorTypeHeaderName,
+  internalEnvironmentIdHeaderName,
+  internalOrgIdHeaderName,
+  internalProjectIdHeaderName,
+  internalResourceIdHeaderName,
+  internalSessionIdHeaderName,
+  loginStartRequestSchema as rootLoginStartRequestSchema,
   requestIdHeaderName,
   resourcePhases,
   sourceplaneErrorCodes,
   traceparentHeaderName
 } from "../src/index.js";
-import { apiErrorEnvelopeSchema } from "../src/api/index.js";
+import {
+  apiErrorEnvelopeSchema,
+  internalActorIdHeaderName as apiInternalActorIdHeaderName,
+  internalActorTypeHeaderName as apiInternalActorTypeHeaderName,
+  internalEnvironmentIdHeaderName as apiInternalEnvironmentIdHeaderName,
+  internalOrgIdHeaderName as apiInternalOrgIdHeaderName,
+  internalProjectIdHeaderName as apiInternalProjectIdHeaderName,
+  internalResourceIdHeaderName as apiInternalResourceIdHeaderName,
+  internalSessionIdHeaderName as apiInternalSessionIdHeaderName
+} from "../src/api/index.js";
+import { identityResolveResultSchema, loginStartRequestSchema } from "../src/auth/index.js";
 import { componentManifestSchema } from "../src/components/index.js";
 import { eventEnvelopeSchema } from "../src/events/index.js";
 import { resourcePhases as resourcePhasesFromResources } from "../src/resources/index.js";
@@ -23,6 +42,8 @@ describe("public contract surface", () => {
     expect(rootApiErrorEnvelopeSchema).toBe(apiErrorEnvelopeSchema);
     expect(rootComponentManifestSchema).toBe(componentManifestSchema);
     expect(rootEventEnvelopeSchema).toBe(eventEnvelopeSchema);
+    expect(rootIdentityResolveResultSchema).toBe(identityResolveResultSchema);
+    expect(rootLoginStartRequestSchema).toBe(loginStartRequestSchema);
     expect(resourcePhases).toBe(resourcePhasesFromResources);
   });
 
@@ -81,6 +102,13 @@ describe("public contract surface", () => {
       errorCodes: sourceplaneErrorCodes,
       headers: {
         idempotencyHeaderName,
+        internalActorIdHeaderName,
+        internalActorTypeHeaderName,
+        internalEnvironmentIdHeaderName,
+        internalOrgIdHeaderName,
+        internalProjectIdHeaderName,
+        internalResourceIdHeaderName,
+        internalSessionIdHeaderName,
         requestIdHeaderName,
         traceparentHeaderName
       },
@@ -105,6 +133,13 @@ describe("public contract surface", () => {
         ],
         "headers": {
           "idempotencyHeaderName": "Idempotency-Key",
+          "internalActorIdHeaderName": "x-sourceplane-actor-id",
+          "internalActorTypeHeaderName": "x-sourceplane-actor-type",
+          "internalEnvironmentIdHeaderName": "x-sourceplane-environment-id",
+          "internalOrgIdHeaderName": "x-sourceplane-org-id",
+          "internalProjectIdHeaderName": "x-sourceplane-project-id",
+          "internalResourceIdHeaderName": "x-sourceplane-resource-id",
+          "internalSessionIdHeaderName": "x-sourceplane-session-id",
           "requestIdHeaderName": "x-sourceplane-request-id",
           "traceparentHeaderName": "traceparent",
         },
@@ -121,5 +156,13 @@ describe("public contract surface", () => {
         ],
       }
     `);
+
+    expect(apiInternalActorTypeHeaderName).toBe(internalActorTypeHeaderName);
+    expect(apiInternalActorIdHeaderName).toBe(internalActorIdHeaderName);
+    expect(apiInternalSessionIdHeaderName).toBe(internalSessionIdHeaderName);
+    expect(apiInternalOrgIdHeaderName).toBe(internalOrgIdHeaderName);
+    expect(apiInternalProjectIdHeaderName).toBe(internalProjectIdHeaderName);
+    expect(apiInternalEnvironmentIdHeaderName).toBe(internalEnvironmentIdHeaderName);
+    expect(apiInternalResourceIdHeaderName).toBe(internalResourceIdHeaderName);
   });
 });

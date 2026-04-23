@@ -40,6 +40,13 @@ export type SourceplaneErrorCode = (typeof sourceplaneErrorCodes)[number];
 export const idempotencyHeaderName = "Idempotency-Key" as const;
 export const requestIdHeaderName = "x-sourceplane-request-id" as const;
 export const traceparentHeaderName = "traceparent" as const;
+export const internalActorTypeHeaderName = "x-sourceplane-actor-type" as const;
+export const internalActorIdHeaderName = "x-sourceplane-actor-id" as const;
+export const internalSessionIdHeaderName = "x-sourceplane-session-id" as const;
+export const internalOrgIdHeaderName = "x-sourceplane-org-id" as const;
+export const internalProjectIdHeaderName = "x-sourceplane-project-id" as const;
+export const internalEnvironmentIdHeaderName = "x-sourceplane-environment-id" as const;
+export const internalResourceIdHeaderName = "x-sourceplane-resource-id" as const;
 export const idempotencyRequiredMethods = ["POST"] as const;
 
 export type IdempotencyRequiredMethod = (typeof idempotencyRequiredMethods)[number];
