@@ -9,6 +9,9 @@
   // Optional generic email delivery:
   // - vars: AUTH_EMAIL_API_URL, AUTH_EMAIL_FROM
   // - secret: AUTH_EMAIL_API_TOKEN
+  // Keep database_name values aligned with the real Cloudflare D1 databases.
+  // run-wrangler-deploy.mjs resolves preview/production placeholder database_id values
+  // from those names at deploy time so real IDs do not need to be committed here.
   "d1_databases": [
     {
       "binding": "IDENTITY_DB",
