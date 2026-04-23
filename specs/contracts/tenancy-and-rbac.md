@@ -66,7 +66,16 @@ The policy service evaluates a request shaped like this:
     "environmentId": null
   },
   "context": {
-    "memberships": [],
+    "memberships": [
+      {
+        "kind": "role_assignment",
+        "role": "admin",
+        "scope": {
+          "kind": "organization",
+          "orgId": "org_123"
+        }
+      }
+    ],
     "attributes": {}
   }
 }
@@ -85,6 +94,29 @@ And returns:
   }
 }
 ```
+
+### Membership Facts Consumed By Policy
+
+`context.memberships` remains additive and may contain future fact shapes, but V1 policy must understand this shared role-assignment fact:
+
+```json
+{
+  "kind": "role_assignment",
+  "role": "project_builder",
+  "scope": {
+    "kind": "project",
+    "orgId": "org_123",
+    "projectId": "prj_123"
+  }
+}
+```
+
+Rules:
+
+- the fact is already scoped to the request subject; policy does not need a separate subject ID inside the fact
+- organization roles may be asserted at organization or narrower nested scopes, but never across organizations
+- project roles may be asserted only for project, environment, or resource scopes within the same project
+- unknown future fact objects may be present and must not widen access unless policy explicitly understands them
 
 ## Required Rules
 
