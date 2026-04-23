@@ -1,8 +1,13 @@
 # policy-worker
 
-Placeholder bounded-context folder reserved for the policy and authorization Worker.
+Cloudflare Worker bounded context for authorization decisions.
 
-Implement against `specs/components/03-policy-authorization.md` and the shared tenancy and RBAC contracts. Keep persistence and policy evaluation local to this component.
-# policy-worker
+Implemented against `specs/components/03-policy-authorization.md` and the shared tenancy and RBAC contracts.
 
-Reserved bounded-context folder for policy evaluation and authorization decisions. Keep the stable seam at the policy contract; do not couple this worker to transport-only edge logic.
+Current V1 behavior:
+
+- exposes `GET /healthz`
+- exposes `GET /internal/ping`
+- exposes `POST /internal/authorize`
+- evaluates deterministic deny-by-default RBAC using request-supplied membership facts
+- keeps role maps and optional overrides inside the policy domain with no cross-domain table reads

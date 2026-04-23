@@ -1,0 +1,28 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "sourceplane-policy-worker",
+  "main": "src/index.ts",
+  "workers_dev": false,
+  "compatibility_date": "2026-04-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "APP_NAME": "policy-worker",
+    "ENVIRONMENT": "local"
+  },
+  "env": {
+    "preview": {
+      "name": "sourceplane-policy-worker-preview",
+      "vars": {
+        "APP_NAME": "policy-worker",
+        "ENVIRONMENT": "preview"
+      }
+    },
+    "production": {
+      "name": "sourceplane-policy-worker-production",
+      "vars": {
+        "APP_NAME": "policy-worker",
+        "ENVIRONMENT": "production"
+      }
+    }
+  }
+}

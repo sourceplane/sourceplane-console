@@ -20,7 +20,16 @@ export const validAuthorizationRequestFixture: AuthorizationRequest = {
     environmentId: null
   },
   context: {
-    memberships: [],
+    memberships: [
+      {
+        kind: "role_assignment",
+        role: "admin",
+        scope: {
+          kind: "organization",
+          orgId: "org_123"
+        }
+      }
+    ],
     attributes: {
       source: "fixture"
     }

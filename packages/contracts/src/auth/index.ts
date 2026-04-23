@@ -101,7 +101,23 @@ export const rbacResourceSchema = z
     environmentId: nullableIdentifierSchema.optional()
   })
   .strict();
-export const authorizationMembershipFactSchema = z.record(z.string(), z.unknown());
+export const authorizationRoleAssignmentScopeSchema = z.union([
+  organizationScopeSchema,
+  projectScopeSchema,
+  environmentScopeSchema,
+  resourceScopeSchema
+]);
+export const authorizationRoleAssignmentMembershipFactSchema = z
+  .object({
+    kind: z.literal("role_assignment"),
+    role: roleNameSchema,
+    scope: authorizationRoleAssignmentScopeSchema
+  })
+  .strict();
+export const authorizationMembershipFactSchema = z.union([
+  authorizationRoleAssignmentMembershipFactSchema,
+  z.record(z.string(), z.unknown())
+]);
 export const authorizationContextSchema = z
   .object({
     memberships: z.array(authorizationMembershipFactSchema),
@@ -310,6 +326,8 @@ export type EnvironmentScope = z.infer<typeof environmentScopeSchema>;
 export type ResourceScope = z.infer<typeof resourceScopeSchema>;
 export type TenantScope = z.infer<typeof tenantScopeSchema>;
 export type AuthorizationResource = z.infer<typeof rbacResourceSchema>;
+export type AuthorizationRoleAssignmentScope = z.infer<typeof authorizationRoleAssignmentScopeSchema>;
+export type AuthorizationRoleAssignmentMembershipFact = z.infer<typeof authorizationRoleAssignmentMembershipFactSchema>;
 export type AuthorizationMembershipFact = z.infer<typeof authorizationMembershipFactSchema>;
 export type AuthorizationContext = z.infer<typeof authorizationContextSchema>;
 export type AuthorizationRequest = z.infer<typeof authorizationRequestSchema>;
@@ -350,6 +368,12 @@ export function isAuthorizationRequest(value: unknown): value is AuthorizationRe
 
 export function isAuthorizationResponse(value: unknown): value is AuthorizationResponse {
   return isWithSchema(authorizationResponseSchema, value);
+}
+
+export function isAuthorizationRoleAssignmentMembershipFact(
+  value: unknown
+): value is AuthorizationRoleAssignmentMembershipFact {
+  return isWithSchema(authorizationRoleAssignmentMembershipFactSchema, value);
 }
 
 export function isIdentityResolveResult(value: unknown): value is IdentityResolveResult {

@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  authorizationRequestSchema,
   createSuccessResponse,
   isApiErrorEnvelope,
   loginCompleteResponseSchema,
@@ -12,6 +13,7 @@ import {
 } from "@sourceplane/contracts";
 import { createApiEdgeApp, type ApiEdgeEnv } from "@sourceplane/api-edge";
 import identityWorker, { type IdentityWorkerEnv } from "@sourceplane/identity-worker";
+import policyWorker, { type PolicyWorkerEnv } from "@sourceplane/policy-worker";
 import { applyD1Migrations, createServiceBinding, createTestD1Database } from "@sourceplane/testing";
 
 import { MemoryIdempotencyStore } from "../src/testing/memory-idempotency-store.js";
@@ -126,6 +128,13 @@ async function createIdentityWorkerTestHarness(): Promise<{ close(): void; env: 
       IDENTITY_DB: database.binding,
       IDENTITY_TOKEN_HASH_SECRET: "identity-test-secret"
     }
+  };
+}
+
+function createPolicyWorkerTestEnv(): PolicyWorkerEnv {
+  return {
+    APP_NAME: "policy-worker",
+    ENVIRONMENT: "local"
   };
 }
 
@@ -594,5 +603,204 @@ describe("api-edge transport behavior", () => {
       binding: "RESOURCES"
     });
     expect(payload.error.message).toBe("The RESOURCES service binding is not configured for this environment.");
+  });
+
+  it("returns forbidden when the real policy worker denies a mutating request", async () => {
+    const worker = createApiEdgeApp();
+    const policyEnv = createPolicyWorkerTestEnv();
+
+    const response = await worker.fetch(
+      new Request("https://api.sourceplane.test/v1/projects", {
+        body: JSON.stringify({
+          name: "Denied Project"
+        }),
+        headers: {
+          authorization: "Bearer edge-test-token",
+          "content-type": "application/json"
+        },
+        method: "POST"
+      }),
+      {
+        APP_NAME: "api-edge",
+        ENVIRONMENT: "local",
+        IDENTITY: createServiceBinding((request) => {
+          const url = new URL(request.url);
+
+          if (url.pathname !== "/internal/auth/resolve" || request.method !== "POST") {
+            return new Response("not found", { status: 404 });
+          }
+
+          return new Response(
+            JSON.stringify(
+              createSuccessResponse(
+                {
+                  actor: {
+                    id: "usr_123",
+                    type: "user"
+                  },
+                  organizationId: "org_123",
+                  sessionId: "ses_123"
+                },
+                {
+                  requestId: request.headers.get("x-sourceplane-request-id") ?? "req_missing"
+                }
+              )
+            ),
+            {
+              headers: {
+                "content-type": "application/json; charset=utf-8"
+              }
+            }
+          );
+        }),
+        POLICY: createServiceBinding((request) => policyWorker.fetch(request, policyEnv, executionContext))
+      } satisfies ApiEdgeEnv,
+      executionContext
+    );
+
+    expect(response.status).toBe(403);
+
+    const payload = assertApiError(await readJsonValue(response));
+
+    expect(payload.error.code).toBe("forbidden");
+    expect(payload.error.message).toBe("The authenticated actor is not allowed to perform this action.");
+    expect(payload.error.details).toEqual({
+      policyVersion: 1,
+      reason: "deny.no_matching_membership"
+    });
+  });
+
+  it("allows a mutating request when a realistic policy binding returns an allow decision", async () => {
+    const worker = createApiEdgeApp({
+      idempotencyStore: new MemoryIdempotencyStore()
+    });
+
+    const response = await worker.fetch(
+      new Request("https://api.sourceplane.test/v1/projects", {
+        body: JSON.stringify({
+          name: "Allowed Project"
+        }),
+        headers: {
+          authorization: "Bearer edge-test-token",
+          "content-type": "application/json",
+          "Idempotency-Key": "idem_policy_allow"
+        },
+        method: "POST"
+      }),
+      {
+        APP_NAME: "api-edge",
+        ENVIRONMENT: "local",
+        IDENTITY: createServiceBinding((request) => {
+          const url = new URL(request.url);
+
+          if (url.pathname !== "/internal/auth/resolve" || request.method !== "POST") {
+            return new Response("not found", { status: 404 });
+          }
+
+          return new Response(
+            JSON.stringify(
+              createSuccessResponse(
+                {
+                  actor: {
+                    id: "usr_123",
+                    type: "user"
+                  },
+                  organizationId: "org_123",
+                  sessionId: "ses_123"
+                },
+                {
+                  requestId: request.headers.get("x-sourceplane-request-id") ?? "req_missing"
+                }
+              )
+            ),
+            {
+              headers: {
+                "content-type": "application/json; charset=utf-8"
+              }
+            }
+          );
+        }),
+        POLICY: createServiceBinding(async (request) => {
+          const payload = authorizationRequestSchema.parse(await readJsonValue(request));
+
+          expect(payload).toEqual({
+            action: "project.create",
+            context: {
+              attributes: {
+                method: "POST",
+                routeGroup: "/v1/projects"
+              },
+              memberships: []
+            },
+            resource: {
+              environmentId: null,
+              id: "org_123",
+              kind: "project",
+              orgId: "org_123",
+              projectId: null
+            },
+            subject: {
+              id: "usr_123",
+              type: "user"
+            }
+          });
+
+          return new Response(
+            JSON.stringify(
+              createSuccessResponse(
+                {
+                  allow: true,
+                  reason: "allow.stub.project_create",
+                  policyVersion: 1,
+                  derivedScope: {
+                    orgId: "org_123"
+                  }
+                },
+                {
+                  requestId: request.headers.get("x-sourceplane-request-id") ?? "req_missing"
+                }
+              )
+            ),
+            {
+              headers: {
+                "content-type": "application/json; charset=utf-8"
+              }
+            }
+          );
+        }),
+        PROJECTS: createServiceBinding((request) => {
+          const requestId = request.headers.get("x-sourceplane-request-id") ?? "req_missing";
+
+          return new Response(
+            JSON.stringify(
+              createSuccessResponse(
+                {
+                  ok: true,
+                  projectId: "prj_policy_allow"
+                },
+                {
+                  requestId
+                }
+              )
+            ),
+            {
+              headers: {
+                "content-type": "application/json; charset=utf-8"
+              }
+            }
+          );
+        })
+      } satisfies ApiEdgeEnv,
+      executionContext
+    );
+
+    expect(response.status).toBe(200);
+
+    const payload = assertApiSuccessEnvelope(await readJsonValue(response), isProjectResultData);
+
+    expect(payload.data).toEqual({
+      ok: true,
+      projectId: "prj_policy_allow"
+    });
   });
 });
