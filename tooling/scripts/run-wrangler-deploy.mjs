@@ -22,6 +22,15 @@ const preparedConfig = prepareDeployConfig({
 });
 
 try {
+  if (preparedConfig) {
+    applyRemoteD1Migrations({
+      bindings: preparedConfig.d1Bindings,
+      configFilePath: preparedConfig.filePath ?? preparedConfig.sourceConfigPath,
+      targetEnvironment,
+      wranglerCommand
+    });
+  }
+
   execFileSync(wranglerCommand, ["deploy", ...replaceConfigArgument(args, preparedConfig?.filePath ?? null)], {
     stdio: "inherit"
   });
@@ -40,41 +49,90 @@ function prepareDeployConfig({
   const environmentConfig = sourceConfig.env?.[targetEnvironment];
 
   if (!environmentConfig || !Array.isArray(environmentConfig.d1_databases)) {
-    return null;
+    return {
+      cleanup() {},
+      d1Bindings: [],
+      filePath: null,
+      sourceConfigPath
+    };
   }
 
-  const bindingsNeedingResolution = environmentConfig.d1_databases.filter(needsResolvedDatabaseId);
-  if (bindingsNeedingResolution.length === 0) {
-    return null;
-  }
+  const d1Bindings = environmentConfig.d1_databases.filter(isD1Binding);
+  const bindingsNeedingResolution = d1Bindings.filter(needsResolvedDatabaseId);
+  let generatedConfigPath = null;
 
-  const databaseIdsByName = loadD1DatabaseIdsByName(wranglerCommand);
+  if (bindingsNeedingResolution.length > 0) {
+    let databaseIdsByName = loadD1DatabaseIdsByName(wranglerCommand);
 
-  for (const binding of bindingsNeedingResolution) {
-    const databaseId = databaseIdsByName.get(binding.database_name);
+    for (const binding of bindingsNeedingResolution) {
+      let databaseId = databaseIdsByName.get(binding.database_name);
 
-    if (!databaseId) {
-      throw new Error(
-        `Could not resolve D1 database ID for '${binding.database_name}' while preparing the ${targetEnvironment} deploy.`
-      );
+      if (!databaseId) {
+        ensureD1DatabaseExists({
+          databaseName: binding.database_name,
+          wranglerCommand
+        });
+        databaseIdsByName = loadD1DatabaseIdsByName(wranglerCommand);
+        databaseId = databaseIdsByName.get(binding.database_name);
+      }
+
+      if (!databaseId) {
+        throw new Error(
+          `Could not resolve D1 database ID for '${binding.database_name}' while preparing the ${targetEnvironment} deploy.`
+        );
+      }
+
+      binding.database_id = databaseId;
     }
 
-    binding.database_id = databaseId;
+    generatedConfigPath = join(
+      dirname(sourceConfigPath),
+      `.wrangler.deploy.${targetEnvironment}.${process.pid}.${Date.now()}.json`
+    );
+
+    writeFileSync(generatedConfigPath, `${JSON.stringify(sourceConfig, null, 2)}\n`);
   }
-
-  const generatedConfigPath = join(
-    dirname(sourceConfigPath),
-    `.wrangler.deploy.${targetEnvironment}.${process.pid}.${Date.now()}.json`
-  );
-
-  writeFileSync(generatedConfigPath, `${JSON.stringify(sourceConfig, null, 2)}\n`);
 
   return {
     cleanup() {
-      rmSync(generatedConfigPath, { force: true });
+      if (generatedConfigPath) {
+        rmSync(generatedConfigPath, { force: true });
+      }
     },
-    filePath: generatedConfigPath
+    d1Bindings,
+    filePath: generatedConfigPath,
+    sourceConfigPath
   };
+}
+
+function applyRemoteD1Migrations({
+  bindings,
+  configFilePath,
+  targetEnvironment,
+  wranglerCommand
+}) {
+  const migrationTargets = new Set(bindings.map((binding) => binding.binding));
+
+  for (const bindingName of migrationTargets) {
+    process.stdout.write(`Applying D1 migrations for ${bindingName} (${targetEnvironment}).\n`);
+    execFileSync(
+      wranglerCommand,
+      ["d1", "migrations", "apply", bindingName, "--env", targetEnvironment, "--config", configFilePath],
+      {
+        stdio: "inherit"
+      }
+    );
+  }
+}
+
+function ensureD1DatabaseExists({
+  databaseName,
+  wranglerCommand
+}) {
+  process.stdout.write(`Creating missing D1 database '${databaseName}'.\n`);
+  execFileSync(wranglerCommand, ["d1", "create", databaseName], {
+    stdio: "inherit"
+  });
 }
 
 function loadD1DatabaseIdsByName(wranglerCommand) {
@@ -156,10 +214,13 @@ function readOptionValue(args, names) {
 
 function needsResolvedDatabaseId(binding) {
   return (
-    isRecord(binding) &&
-    typeof binding.database_name === "string" &&
+    isD1Binding(binding) &&
     (typeof binding.database_id !== "string" || isPlaceholderDatabaseId(binding.database_id))
   );
+}
+
+function isD1Binding(value) {
+  return isRecord(value) && typeof value.binding === "string" && typeof value.database_name === "string";
 }
 
 function isPlaceholderDatabaseId(value) {
