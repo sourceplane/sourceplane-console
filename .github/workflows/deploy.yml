@@ -107,5 +107,5 @@ jobs:
           while IFS= read -r workspace; do
             [[ -z "$workspace" ]] && continue
             pnpm --filter "@sourceplane/${workspace}..." build
-            pnpm --filter "@sourceplane/${workspace}" deploy -- --env "$TARGET_ENVIRONMENT"
+            pnpm --filter "@sourceplane/${workspace}" run deploy -- --env "$TARGET_ENVIRONMENT"
           done <<< "$ordered_workspaces"
