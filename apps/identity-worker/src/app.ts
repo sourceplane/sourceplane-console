@@ -36,7 +36,7 @@ export function createIdentityWorkerApp(): ExportedHandler<IdentityWorkerEnv> {
         delivery: createLoginCodeDelivery(env, stage),
         repository: new D1IdentityRepository(env.IDENTITY_DB),
         serviceName: env.APP_NAME,
-        tokenHashSecret: env.IDENTITY_TOKEN_HASH_SECRET
+        tokenHashSecret: resolveTokenHashSecret(env, stage)
       });
       const url = new URL(request.url);
 
@@ -107,6 +107,23 @@ export function createIdentityWorkerApp(): ExportedHandler<IdentityWorkerEnv> {
       }
     }
   };
+}
+
+function resolveTokenHashSecret(env: IdentityWorkerEnv, stage: ReturnType<typeof parseDeploymentEnvironment>): string {
+  const configuredSecret = env.IDENTITY_TOKEN_HASH_SECRET?.trim();
+  if (configuredSecret) {
+    return configuredSecret;
+  }
+
+  if (stage !== "production") {
+    console.warn("identity-worker using non-production fallback token hash secret", {
+      service: env.APP_NAME,
+      stage
+    });
+    return `${env.APP_NAME}:${stage}:fallback-token-hash-secret`;
+  }
+
+  throw new SourceplaneHttpError(500, "internal_error", "Identity token hashing is not configured for production.");
 }
 
 async function handleForwardedPublicAuthRequest(options: {
