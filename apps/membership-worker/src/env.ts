@@ -3,5 +3,5 @@ import type { WorkerServiceBinding, SourceplaneWorkerEnv } from "@sourceplane/sh
 export interface MembershipWorkerEnv extends SourceplaneWorkerEnv {
   IDENTITY?: WorkerServiceBinding;
   MEMBERSHIP_DB: D1Database;
-  MEMBERSHIP_TOKEN_HASH_SECRET: string;
+  MEMBERSHIP_TOKEN_HASH_SECRET?: string;
 }
