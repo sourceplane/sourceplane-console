@@ -51,5 +51,11 @@ export function resolveBaseUrl(): string {
   const meta = import.meta as ImportMeta & { env?: Record<string, string | undefined> };
   const env = meta.env ?? {};
   const value: unknown = env.VITE_API_BASE_URL;
-  return resolveApiBaseUrl(value);
+  const resolved = resolveApiBaseUrl(value);
+  // The SDK URL constructor requires an absolute URL. When same-origin routing is
+  // active (deriveApiBaseUrl returns "/"), convert it to the current window origin.
+  if (resolved.startsWith("/") && typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return resolved;
 }
