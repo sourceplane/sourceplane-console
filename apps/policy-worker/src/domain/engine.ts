@@ -56,6 +56,11 @@ export const defaultPolicyRoleMap: PolicyRoleMap = {
     admin: [
       "organization.read",
       "organization.update",
+      "organization.member.list",
+      "organization.member.update",
+      "organization.member.remove",
+      "organization.invite.create",
+      "organization.invite.revoke",
       "membership.*",
       "invite.*",
       ...operationalResourcePatterns,

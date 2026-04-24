@@ -86,19 +86,41 @@ export function createApiEdgeApp(options: ApiEdgeAppOptions = {}): ExportedHandl
             requestContext,
             tenant
           };
+          const requiresAuthenticatedActor = routeRequiresAuthenticatedActor(
+            routeMatch.group,
+            routeMatch.subpath,
+            requestContext.method
+          );
+          const shouldAuthorizeWithPolicy = routeRequiresPolicyAuthorization(
+            routeMatch.group,
+            routeMatch.subpath,
+            requestContext.method
+          );
           const allowsAnonymousMutation = isAnonymousAuthMutation(routeMatch.group, routeMatch.subpath, requestContext.method);
 
-          if (isMutatingMethod(requestContext.method) && !allowsAnonymousMutation) {
+          if (requiresAuthenticatedActor) {
             requireAuthenticatedActor(auth);
+          }
 
+          if (shouldAuthorizeWithPolicy) {
             const authorizationRequest = buildAuthorizationRequest({
               auth,
               method: requestContext.method,
               routeGroup: routeMatch.group,
+              subpath: routeMatch.subpath,
               tenant
             });
 
             if (env.POLICY && authorizationRequest) {
+              const membershipResolution = await services.membership.resolveAuthorizationMemberships(
+                {
+                  resource: authorizationRequest.resource,
+                  subject: authorizationRequest.subject
+                },
+                metadata
+              );
+              authorizationRequest.context.memberships = membershipResolution.memberships;
+
               const authorizationResponse = await services.policy.authorize(authorizationRequest, metadata);
 
               if (!authorizationResponse.allow) {
@@ -269,6 +291,46 @@ function isAnonymousAuthMutation(routeGroup: PublicRouteGroup, subpath: string, 
   }
 
   return subpath === "/login/start" || subpath === "/login/complete";
+}
+
+function routeRequiresAuthenticatedActor(routeGroup: PublicRouteGroup, _subpath: string, method: string): boolean {
+  if (routeGroup === "/v1/organizations") {
+    return true;
+  }
+
+  return isMutatingMethod(method) && !isAnonymousAuthMutation(routeGroup, _subpath, method);
+}
+
+function routeRequiresPolicyAuthorization(routeGroup: PublicRouteGroup, subpath: string, method: string): boolean {
+  if (routeGroup !== "/v1/organizations") {
+    return isMutatingMethod(method) && !isAnonymousAuthMutation(routeGroup, subpath, method);
+  }
+
+  if (subpath === "/") {
+    return false;
+  }
+
+  if (isOrganizationInviteAcceptRoute(subpath, method)) {
+    return false;
+  }
+
+  if (method === "GET") {
+    return subpath !== "/";
+  }
+
+  if (method === "POST") {
+    return subpath !== "/";
+  }
+
+  return isMutatingMethod(method);
+}
+
+function isOrganizationInviteAcceptRoute(subpath: string, method: string): boolean {
+  if (method !== "POST") {
+    return false;
+  }
+
+  return /^\/invites\/[^/]+\/accept$/u.test(subpath);
 }
 
 function handleReadyRoute(env: ApiEdgeEnv, requestId: string): Response {

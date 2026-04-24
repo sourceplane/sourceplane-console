@@ -390,6 +390,19 @@ export class D1IdentityRepository implements IdentityRepository {
     };
   }
 
+  async findUserById(userId: string): Promise<UserRecord | null> {
+    const row = await this.database
+      .prepare(
+        `SELECT id, primary_email, normalized_email, created_at, updated_at
+         FROM users
+         WHERE id = ?`
+      )
+      .bind(userId)
+      .first<UserRow>();
+
+    return row ? mapUserRow(row) : null;
+  }
+
   async incrementLoginChallengeAttempt(challengeId: string, attemptedAt: string): Promise<void> {
     await this.database
       .prepare(
@@ -507,17 +520,7 @@ export class D1IdentityRepository implements IdentityRepository {
       .bind(normalizedEmail)
       .first<UserRow>();
 
-    if (!row) {
-      return null;
-    }
-
-    return {
-      createdAt: row.created_at,
-      id: row.id,
-      normalizedEmail: row.normalized_email,
-      primaryEmail: row.primary_email,
-      updatedAt: row.updated_at
-    };
+    return row ? mapUserRow(row) : null;
   }
 
   private async readApiKey(query: string, bindings: readonly unknown[]): Promise<ApiKeyRecord | null> {
@@ -570,6 +573,16 @@ function mapApiKeyRow(row: ApiKeyRow): ApiKeyRecord {
       revokedAt: row.service_principal_revoked_at,
       roleNames: parseRoleNames(row.service_principal_role_names_json)
     }
+  };
+}
+
+function mapUserRow(row: UserRow): UserRecord {
+  return {
+    createdAt: row.created_at,
+    id: row.id,
+    normalizedEmail: row.normalized_email,
+    primaryEmail: row.primary_email,
+    updatedAt: row.updated_at
   };
 }
 

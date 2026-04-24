@@ -17,6 +17,7 @@ import {
   internalResourceIdHeaderName,
   internalSessionIdHeaderName,
   loginStartRequestSchema as rootLoginStartRequestSchema,
+  organizationSchema as rootOrganizationSchema,
   requestIdHeaderName,
   resourcePhases,
   sourceplaneErrorCodes,
@@ -35,6 +36,7 @@ import {
 import { identityResolveResultSchema, loginStartRequestSchema } from "../src/auth/index.js";
 import { componentManifestSchema } from "../src/components/index.js";
 import { eventEnvelopeSchema } from "../src/events/index.js";
+import { organizationSchema } from "../src/membership/index.js";
 import { resourcePhases as resourcePhasesFromResources } from "../src/resources/index.js";
 
 describe("public contract surface", () => {
@@ -44,6 +46,7 @@ describe("public contract surface", () => {
     expect(rootEventEnvelopeSchema).toBe(eventEnvelopeSchema);
     expect(rootIdentityResolveResultSchema).toBe(identityResolveResultSchema);
     expect(rootLoginStartRequestSchema).toBe(loginStartRequestSchema);
+    expect(rootOrganizationSchema).toBe(organizationSchema);
     expect(resourcePhases).toBe(resourcePhasesFromResources);
   });
 

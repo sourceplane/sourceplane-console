@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   createApiKeyResponseSchema,
   identityResolveResultSchema,
+  identityUserLookupResponseSchema,
   internalActorIdHeaderName,
   internalActorTypeHeaderName,
   internalSessionIdHeaderName,
@@ -344,6 +345,38 @@ describe("identity-worker", () => {
         organizationId: null,
         sessionId: null
       });
+    } finally {
+      harness.close();
+    }
+  });
+
+  it("resolves a user profile through the internal user lookup seam", async () => {
+    const harness = await createHarness();
+
+    try {
+      const session = await createInteractiveSession(harness.env);
+      const resolvedUser = await callSuccessEnvelope(
+        identityWorker.fetch(
+          new Request("https://identity.sourceplane.test/internal/users/resolve", {
+            body: JSON.stringify({
+              userId: session.userId
+            }),
+            headers: {
+              "content-type": "application/json"
+            },
+            method: "POST"
+          }),
+          harness.env,
+          executionContext
+        )
+      );
+
+      const userLookupResult = identityUserLookupResponseSchema.parse(resolvedUser.data);
+
+      expect(userLookupResult.user).not.toBeNull();
+      expect(typeof userLookupResult.user?.createdAt).toBe("string");
+      expect(userLookupResult.user?.id).toBe(session.userId);
+      expect(userLookupResult.user?.primaryEmail).toBe("user@example.com");
     } finally {
       harness.close();
     }

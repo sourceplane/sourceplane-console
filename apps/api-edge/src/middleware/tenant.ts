@@ -2,7 +2,8 @@ import type { TenantContext } from "../types.js";
 
 export function extractTenantContext(pathname: string): TenantContext {
   const segments = pathname.split("/").filter(Boolean);
-  const orgId = segmentAfter(segments, "organizations");
+  const organizationSegment = segmentAfter(segments, "organizations");
+  const orgId = organizationSegment && !isReservedOrganizationSubresource(organizationSegment) ? organizationSegment : null;
   const projectId = segmentAfter(segments, "projects");
   const environmentId = segmentAfter(segments, "environments");
   const resourceId = segmentAfter(segments, "resources");
@@ -41,4 +42,8 @@ function segmentAfter(segments: string[], segmentName: string): string | null {
   const value = index >= 0 ? segments[index + 1] : undefined;
 
   return value ?? null;
+}
+
+function isReservedOrganizationSubresource(segment: string): boolean {
+  return segment === "invites";
 }
