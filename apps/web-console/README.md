@@ -9,7 +9,7 @@ Operator-facing web console that talks only to the public `/v1/*` API exposed by
 | --- | --- | --- |
 | Local Vite dev | `http://127.0.0.1:4173` | Cross-origin to local edge on `:8787`; local CORS is preconfigured. |
 | Preview workers.dev | `https://sourceplane-web-console-preview.rahulvarghesepullely.workers.dev` | Browser auto-targets `sourceplane-api-edge-preview` on the same workers.dev account hostname. |
-| Preview custom domains | `https://console.sourceplane.ai` and `https://www.console.sourceplane.ai` | Routed to the preview console worker; `/v1*` is routed to preview `api-edge` on the same hostname. |
+| Preview custom domains | `https://www.console.sourceplane.ai` (canonical), `https://console.sourceplane.ai` (308-redirects to `www`) | Both hostnames are bound to the preview console worker. The bare apex 308-redirects to `www` so browser-scoped storage (`localStorage`, cookies) lives on a single canonical host and never gets stranded between two origins. `/v1*` is routed to preview `api-edge` on the same `www` hostname. |
 
 Deep links such as `/login`, `/orgs/:orgId/projects`, and invite acceptance
 routes are SPA-safe: refreshing the page serves `index.html` instead of a blank
@@ -44,7 +44,11 @@ pnpm --filter @sourceplane/web-console dev
 
 ### Preview custom domains
 
-1. Open `https://console.sourceplane.ai/login` or `https://www.console.sourceplane.ai/login`.
+1. Open `https://www.console.sourceplane.ai/login` (the canonical preview URL).
+   Visiting `https://console.sourceplane.ai/...` redirects to the same path on
+   the `www` host with a 308; this avoids a class of "blank/black screen on
+   refresh" issues caused by browser storage being scoped to whichever apex/`www`
+   variant you logged in on first.
 2. Sign in with any email.
 3. The console and `/v1/*` API are routed on the same hostname, so no browser
    CORS setup is required on this path.
