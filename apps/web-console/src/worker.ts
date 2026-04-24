@@ -14,10 +14,18 @@ export interface WebConsoleEnv {
 const appShellPath = "/index.html";
 const assetPathPrefix = "/assets/";
 const staticFilePattern = /\/[^/]+\.[a-z0-9]+$/iu;
+const canonicalApexRedirects: Record<string, string> = {
+  "console.sourceplane.ai": "www.console.sourceplane.ai"
+};
 
 const worker = {
   async fetch(request: Request, env: WebConsoleEnv): Promise<Response> {
     try {
+      const canonicalRedirect = buildCanonicalRedirect(request);
+      if (canonicalRedirect) {
+        return canonicalRedirect;
+      }
+
       const assetRequest = shouldServeAppShell(request) ? buildAppShellRequest(request) : request;
       const assetResponse = await env.ASSETS.fetch(assetRequest);
 
@@ -40,6 +48,24 @@ const worker = {
 };
 
 export default worker;
+
+function buildCanonicalRedirect(request: Request): Response | null {
+  const url = new URL(request.url);
+  const target = canonicalApexRedirects[url.hostname];
+  if (!target) {
+    return null;
+  }
+
+  const redirectUrl = new URL(url.toString());
+  redirectUrl.hostname = target;
+
+  const headers = new Headers({ location: redirectUrl.toString() });
+  // Cache the redirect itself but force revalidation so we can change canonical hosts later.
+  headers.set("cache-control", "public, max-age=0, must-revalidate");
+
+  const status = request.method === "GET" || request.method === "HEAD" ? 308 : 307;
+  return new Response(null, { headers, status });
+}
 
 function buildAppShellRequest(request: Request): Request {
   const appShellUrl = new URL(request.url);

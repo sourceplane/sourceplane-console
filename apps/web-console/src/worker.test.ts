@@ -65,7 +65,7 @@ describe("web-console worker", () => {
 
   it("uses the explicit API base URL when provided by the worker env", async () => {
     const response = await worker.fetch(
-      new Request("https://console.sourceplane.ai/", {
+      new Request("https://www.console.sourceplane.ai/", {
         headers: { accept: "text/html" }
       }),
       {
@@ -82,5 +82,45 @@ describe("web-console worker", () => {
     );
 
     expect(await response.text()).toContain("https://api.sourceplane.ai");
+  });
+
+  it("redirects bare apex console.sourceplane.ai to the canonical www host", async () => {
+    const assetFetch = vi.fn();
+    const response = await worker.fetch(
+      new Request("https://console.sourceplane.ai/orgs?next=/projects", {
+        headers: { accept: "text/html" }
+      }),
+      {
+        APP_NAME: "web-console",
+        ASSETS: createAssetsBinding((request) => {
+          assetFetch(request);
+          return new Response("should not be served", { status: 200 });
+        }),
+        ENVIRONMENT: "preview"
+      }
+    );
+
+    expect(assetFetch).not.toHaveBeenCalled();
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe(
+      "https://www.console.sourceplane.ai/orgs?next=/projects"
+    );
+  });
+
+  it("uses 307 for non-idempotent methods so request bodies are preserved", async () => {
+    const response = await worker.fetch(
+      new Request("https://console.sourceplane.ai/api-thing", {
+        method: "POST",
+        body: "{}"
+      }),
+      {
+        APP_NAME: "web-console",
+        ASSETS: createAssetsBinding(() => new Response("nope", { status: 200 })),
+        ENVIRONMENT: "preview"
+      }
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://www.console.sourceplane.ai/api-thing");
   });
 });
