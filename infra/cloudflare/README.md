@@ -21,3 +21,5 @@ Required GitHub secrets for deploy workflows:
 - `CLOUDFLARE_ACCOUNT_ID`
 
 For D1-backed Workers, commit the stable `database_name` in `wrangler.jsonc` and let `tooling/scripts/run-wrangler-deploy.mjs` resolve preview/production `database_id` values from the authenticated Cloudflare account at deploy time. The same deploy script must apply migrations with `wrangler d1 migrations apply --remote` for preview/production so the hosted databases stay in sync with the repository schema.
+
+For KV-backed bindings such as `EDGE_IDEMPOTENCY`, commit placeholder IDs in `wrangler.jsonc` and let the same deploy script resolve or create the real preview/production namespace IDs before `wrangler deploy` runs.

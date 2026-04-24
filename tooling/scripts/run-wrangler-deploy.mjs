@@ -48,21 +48,29 @@ function prepareDeployConfig({
   const sourceConfig = parseJsonc(readFileSync(sourceConfigPath, "utf8"));
   const environmentConfig = sourceConfig.env?.[targetEnvironment];
 
-  if (!environmentConfig || !Array.isArray(environmentConfig.d1_databases)) {
+  if (!environmentConfig) {
     return {
       cleanup() {},
       d1Bindings: [],
+      kvBindings: [],
       filePath: null,
       sourceConfigPath
     };
   }
 
-  const d1Bindings = environmentConfig.d1_databases.filter(isD1Binding);
+  const d1Bindings = Array.isArray(environmentConfig.d1_databases)
+    ? environmentConfig.d1_databases.filter(isD1Binding)
+    : [];
+  const kvBindings = Array.isArray(environmentConfig.kv_namespaces)
+    ? environmentConfig.kv_namespaces.filter(isKvBinding)
+    : [];
   const bindingsNeedingResolution = d1Bindings.filter(needsResolvedDatabaseId);
+  const kvBindingsNeedingResolution = kvBindings.filter(needsResolvedKvNamespaceId);
   let generatedConfigPath = null;
 
-  if (bindingsNeedingResolution.length > 0) {
+  if (bindingsNeedingResolution.length > 0 || kvBindingsNeedingResolution.length > 0) {
     let databaseIdsByName = loadD1DatabaseIdsByName(wranglerCommand);
+    let kvNamespaceIdsByTitle = loadKvNamespaceIdsByTitle(wranglerCommand);
 
     for (const binding of bindingsNeedingResolution) {
       let databaseId = databaseIdsByName.get(binding.database_name);
@@ -85,6 +93,30 @@ function prepareDeployConfig({
       binding.database_id = databaseId;
     }
 
+    const namespaceTitlePrefix = typeof environmentConfig.name === "string" ? environmentConfig.name : sourceConfig.name;
+
+    for (const binding of kvBindingsNeedingResolution) {
+      const namespaceTitle = `${namespaceTitlePrefix}-${toKebabCase(binding.binding)}`;
+      let namespaceId = kvNamespaceIdsByTitle.get(namespaceTitle);
+
+      if (!namespaceId) {
+        ensureKvNamespaceExists({
+          namespaceTitle,
+          wranglerCommand
+        });
+        kvNamespaceIdsByTitle = loadKvNamespaceIdsByTitle(wranglerCommand);
+        namespaceId = kvNamespaceIdsByTitle.get(namespaceTitle);
+      }
+
+      if (!namespaceId) {
+        throw new Error(
+          `Could not resolve KV namespace ID for '${namespaceTitle}' while preparing the ${targetEnvironment} deploy.`
+        );
+      }
+
+      binding.id = namespaceId;
+    }
+
     generatedConfigPath = join(
       dirname(sourceConfigPath),
       `.wrangler.deploy.${targetEnvironment}.${process.pid}.${Date.now()}.json`
@@ -100,6 +132,7 @@ function prepareDeployConfig({
       }
     },
     d1Bindings,
+    kvBindings,
     filePath: generatedConfigPath,
     sourceConfigPath
   };
@@ -165,6 +198,46 @@ function loadD1DatabaseIdsByName(wranglerCommand) {
   return databasesByName;
 }
 
+function ensureKvNamespaceExists({
+  namespaceTitle,
+  wranglerCommand
+}) {
+  process.stdout.write(`Creating missing KV namespace '${namespaceTitle}'.\n`);
+  execFileSync(wranglerCommand, ["kv", "namespace", "create", namespaceTitle], {
+    stdio: "inherit"
+  });
+}
+
+function loadKvNamespaceIdsByTitle(wranglerCommand) {
+  const output = execFileSync(wranglerCommand, ["kv", "namespace", "list", "--json"], {
+    encoding: "utf8"
+  });
+  const parsedValue = JSON.parse(output);
+
+  if (!Array.isArray(parsedValue)) {
+    throw new TypeError("Expected `wrangler kv namespace list --json` to return an array.");
+  }
+
+  const namespacesByTitle = new Map();
+
+  for (const entry of parsedValue) {
+    if (!isRecord(entry)) {
+      continue;
+    }
+
+    const namespaceTitle = typeof entry.title === "string" ? entry.title : null;
+    const namespaceId = typeof entry.id === "string" ? entry.id : null;
+
+    if (!namespaceTitle || !namespaceId) {
+      continue;
+    }
+
+    namespacesByTitle.set(namespaceTitle, namespaceId);
+  }
+
+  return namespacesByTitle;
+}
+
 function readDatabaseId(entry) {
   if (typeof entry.uuid === "string") {
     return entry.uuid;
@@ -223,8 +296,24 @@ function isD1Binding(value) {
   return isRecord(value) && typeof value.binding === "string" && typeof value.database_name === "string";
 }
 
+function isKvBinding(value) {
+  return isRecord(value) && typeof value.binding === "string" && typeof value.id === "string";
+}
+
 function isPlaceholderDatabaseId(value) {
   return /^([0-9a-f])\1{7}-\1{4}-\1{4}-\1{4}-\1{12}$/iu.test(value);
+}
+
+function needsResolvedKvNamespaceId(binding) {
+  return isKvBinding(binding) && isPlaceholderKvNamespaceId(binding.id);
+}
+
+function isPlaceholderKvNamespaceId(value) {
+  return /^([0-9a-f])\1{31}$/iu.test(value);
+}
+
+function toKebabCase(value) {
+  return value.toLowerCase().replace(/_/gu, "-");
 }
 
 function isRecord(value) {
