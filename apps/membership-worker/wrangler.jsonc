@@ -31,7 +31,7 @@
       "d1_databases": [
         {
           "binding": "MEMBERSHIP_DB",
-          "database_name": "sourceplane-membership-preview",
+          "database_name": "sourceplane-membership-preview-v2",
           "database_id": "44444444-4444-4444-4444-444444444444",
           "migrations_dir": "migrations"
         }
