@@ -19,6 +19,7 @@ import {
 import { parseJsonBody } from "./middleware/json-body.js";
 import { createEdgeRequestContext, isMutatingMethod, matchPublicRoute } from "./middleware/request-context.js";
 import { extractTenantContext } from "./middleware/tenant.js";
+import { applyCorsHeaders, buildCorsHeaders, handleCorsPreflight, parseAllowedOrigins, resolveCorsOrigin } from "./middleware/cors.js";
 import { getPublicRouteDefinition, publicRouteDefinitions } from "./routes/groups.js";
 import type { DomainRouteResult, PublicRouteClientRequest, ServiceRequestMetadata } from "./types.js";
 
@@ -30,12 +31,23 @@ export function createApiEdgeApp(options: ApiEdgeAppOptions = {}): ExportedHandl
   return {
     async fetch(request: Request, env: ApiEdgeEnv): Promise<Response> {
       const url = new URL(request.url);
+      const allowedOrigins = parseAllowedOrigins(env.WEB_CONSOLE_ORIGINS);
+      const corsOrigin = resolveCorsOrigin(request.headers.get("origin"), allowedOrigins);
+      const corsHeaders = corsOrigin ? buildCorsHeaders(corsOrigin) : null;
+
+      if (request.method === "OPTIONS" && corsHeaders) {
+        return handleCorsPreflight(request, corsHeaders);
+      }
+
       const routeMatch = matchPublicRoute(url.pathname);
       const requestContext = createEdgeRequestContext(request, routeMatch);
       const services = createApiEdgeServices(env);
       const idempotencyStore = options.idempotencyStore ?? createIdempotencyStoreFromEnv(env);
 
-      try {
+      const respond = (response: Response): Response => (corsHeaders ? applyCorsHeaders(response, corsHeaders) : response);
+
+      const processRequest = async (): Promise<Response> => {
+        try {
         if (url.pathname === "/healthz") {
           return handleHealthRoute(env, requestContext.requestId);
         }
@@ -224,9 +236,12 @@ export function createApiEdgeApp(options: ApiEdgeAppOptions = {}): ExportedHandl
           message: "Route not found.",
           requestId: requestContext.requestId
         });
-      } catch (error) {
-        return toErrorResponse(error, requestContext.requestId);
-      }
+        } catch (error) {
+          return toErrorResponse(error, requestContext.requestId);
+        }
+      };
+
+      return respond(await processRequest());
     }
   } satisfies ExportedHandler<ApiEdgeEnv>;
 }

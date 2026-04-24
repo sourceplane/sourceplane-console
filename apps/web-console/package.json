@@ -13,12 +13,20 @@
   },
   "dependencies": {
     "@sourceplane/contracts": "workspace:*",
+    "@sourceplane/sdk": "workspace:*",
+    "@sourceplane/shared": "workspace:*",
     "@sourceplane/ui": "workspace:*",
+    "@tanstack/react-query": "^5",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "react-router-dom": "^6"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6",
+    "@testing-library/react": "^16",
+    "@testing-library/user-event": "^14",
     "@vitejs/plugin-react": "^5",
+    "jsdom": "^25",
     "vite": "^7",
     "wrangler": "^4"
   }
