@@ -70,10 +70,12 @@ pnpm --filter @sourceplane/web-console dev
 
 - `apps/web-console/wrangler.jsonc`
   - local `API_BASE_URL=http://127.0.0.1:8787`
-  - preview routes for `console.sourceplane.ai/*` and `www.console.sourceplane.ai/*`
+  - preview `workers_dev=true`
+  - preview Custom Domains for `console.sourceplane.ai` and `www.console.sourceplane.ai`
   - Worker observability enabled
 - `apps/api-edge/wrangler.jsonc`
   - local `WEB_CONSOLE_ORIGINS=http://127.0.0.1:4173`
+  - preview `workers_dev=true`
   - preview origin allowlist for workers.dev + custom domains
   - preview routes for `console.sourceplane.ai/v1*`, `/healthz`, `/readyz` and
     the matching `www.` host
