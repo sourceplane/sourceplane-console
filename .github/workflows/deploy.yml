@@ -20,6 +20,7 @@ on:
           - auto
           - api-edge
           - identity-worker
+          - policy-worker
           - web-console
   push:
     branches:
@@ -102,7 +103,7 @@ jobs:
           TARGET_ENVIRONMENT: ${{ needs.discover.outputs.target_environment }}
         shell: bash
         run: |
-          ordered_workspaces=$(node -e 'const workspaces = JSON.parse(process.env.WORKSPACE_MATRIX); const deployOrder = ["identity-worker", "api-edge", "web-console"]; for (const workspace of deployOrder) { if (workspaces.includes(workspace)) console.log(workspace); }')
+          ordered_workspaces=$(node -e 'const workspaces = JSON.parse(process.env.WORKSPACE_MATRIX); const deployOrder = ["identity-worker", "policy-worker", "api-edge", "web-console"]; for (const workspace of deployOrder) { if (workspaces.includes(workspace)) console.log(workspace); }')
 
           while IFS= read -r workspace; do
             [[ -z "$workspace" ]] && continue
