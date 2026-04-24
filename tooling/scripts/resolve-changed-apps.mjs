@@ -41,6 +41,7 @@ const baseRef = resolveBaseRef(baseRefArg.trim());
 const deployableApps = [
   "api-edge",
   "identity-worker",
+  "membership-worker",
   "policy-worker",
   "web-console"
 ];
