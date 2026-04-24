@@ -3,15 +3,25 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@sourceplane/ui": ["../../packages/ui/src/index.tsx"]
+      "@sourceplane/ui": ["../../packages/ui/src/index.tsx"],
+      "@sourceplane/sdk": ["../../packages/sdk/src/index.ts"],
+      "@sourceplane/contracts": ["../../packages/contracts/src/index.ts"],
+      "@sourceplane/contracts/*": ["../../packages/contracts/src/*"],
+      "@sourceplane/shared": ["../../packages/shared/src/index.ts"]
     },
-    "types": ["node", "vite/client"]
+    "types": ["node", "vite/client", "vitest/globals", "@testing-library/jest-dom"]
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
+    "test/**/*.ts",
+    "test/**/*.tsx",
     "vite.config.ts",
     "../../packages/ui/src/**/*.ts",
-    "../../packages/ui/src/**/*.tsx"
+    "../../packages/ui/src/**/*.tsx",
+    "../../packages/sdk/src/**/*.ts",
+    "../../packages/contracts/src/**/*.ts",
+    "../../packages/shared/src/**/*.ts"
   ]
 }
+

@@ -28,6 +28,7 @@ export interface ApiEdgeEnv extends SourceplaneWorkerEnv {
   PROJECTS?: WorkerServiceBinding;
   RESOURCES?: WorkerServiceBinding;
   RUNTIME?: WorkerServiceBinding;
+  WEB_CONSOLE_ORIGINS?: string;
 }
 
 export function getEdgeServiceStatuses(env: ApiEdgeEnv): ServiceStatus[] {

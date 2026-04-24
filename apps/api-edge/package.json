@@ -14,7 +14,7 @@
     "deploy": "node ../../tooling/scripts/run-wrangler-deploy.mjs",
     "dev": "wrangler dev --local",
     "lint": "eslint src test",
-    "test": "vitest run test/worker.integration.test.ts",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -26,6 +26,7 @@
     "@sourceplane/membership-worker": "workspace:*",
     "@sourceplane/policy-worker": "workspace:*",
     "@sourceplane/projects-worker": "workspace:*",
+    "@sourceplane/sdk": "workspace:*",
     "@sourceplane/testing": "workspace:*",
     "wrangler": "^4"
   }

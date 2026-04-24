@@ -21,6 +21,29 @@ This repository now contains the Sourceplane monorepo scaffold and the original 
 	- `npm exec --yes pnpm@10.7.1 -- test`
 	- `npm exec --yes pnpm@10.7.1 -- contract:test`
 
+## Console-Driven Walkthrough
+
+Once the dev surfaces are running you can drive the live public API end-to-end
+from the browser without any extra fixtures:
+
+1. Open http://127.0.0.1:4173 (web console served by Vite).
+2. Enter any email at `/login`. The identity worker is in local-debug mode and
+   surfaces the one-time code in the response, which the console autofills.
+3. Verify the code → you land on `/orgs`. Create an organization.
+4. From the new org, open **Members** → invite a second email; the local-debug
+   acceptance token is shown in the success card. Copy it.
+5. Sign out, sign in as the invited email, paste the token into the
+   `/invites/:inviteId?token=…` form (or just visit the deep link the org owner
+   shares with you).
+6. Switch to **Projects**, create a project — a `development` environment is
+   provisioned automatically. Add a `staging` env from the project view.
+7. Try the placeholder routes (Components, Resources, Config, Audit, Usage,
+   Billing). They surface explicit "coming soon" cards pointing at the spec
+   markdown for the future task that will fill them in.
+
+Every request is dispatched through `@sourceplane/sdk` against `apps/api-edge`,
+exercising the same code path that the CLI and downstream automation will use.
+
 ## Workspace Layout
 
 - `apps/`: deployable Cloudflare apps and placeholder bounded-context folders
