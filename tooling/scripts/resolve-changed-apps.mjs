@@ -43,6 +43,7 @@ const deployableApps = [
   "identity-worker",
   "membership-worker",
   "policy-worker",
+  "projects-worker",
   "web-console"
 ];
 

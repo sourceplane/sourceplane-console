@@ -24,6 +24,10 @@
     {
       "binding": "POLICY",
       "service": "sourceplane-policy-worker"
+    },
+    {
+      "binding": "PROJECTS",
+      "service": "sourceplane-projects-worker"
     }
   ],
   "env": {
@@ -45,6 +49,10 @@
         {
           "binding": "POLICY",
           "service": "sourceplane-policy-worker-preview"
+        },
+        {
+          "binding": "PROJECTS",
+          "service": "sourceplane-projects-worker-preview"
         }
       ]
     },
@@ -66,6 +74,10 @@
         {
           "binding": "POLICY",
           "service": "sourceplane-policy-worker-production"
+        },
+        {
+          "binding": "PROJECTS",
+          "service": "sourceplane-projects-worker-production"
         }
       ]
     }
