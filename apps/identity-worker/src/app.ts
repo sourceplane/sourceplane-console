@@ -1,6 +1,8 @@
 import {
   createApiKeyRequestSchema,
   identityResolveRequestSchema,
+  identityUserLookupRequestSchema,
+  identityUserLookupResponseSchema,
   internalActorIdHeaderName,
   internalActorTypeHeaderName,
   internalSessionIdHeaderName,
@@ -66,6 +68,13 @@ export function createIdentityWorkerApp(): ExportedHandler<IdentityWorkerEnv> {
         if (url.pathname === "/internal/auth/resolve" && request.method === "POST") {
           const body = identityResolveRequestSchema.parse(await parseJsonBody(request));
           const result = await service.resolveAuthToken(body.token);
+
+          return jsonSuccess(result, requestContext.requestId);
+        }
+
+        if (url.pathname === "/internal/users/resolve" && request.method === "POST") {
+          const body = identityUserLookupRequestSchema.parse(await parseJsonBody(request));
+          const result = identityUserLookupResponseSchema.parse(await service.resolveUser(body.userId));
 
           return jsonSuccess(result, requestContext.requestId);
         }

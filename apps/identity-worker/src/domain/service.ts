@@ -2,6 +2,7 @@ import type {
   CreateApiKeyRequest,
   CreateApiKeyResponse,
   IdentityResolveResult,
+  IdentityUserLookupResponse,
   IdentityUser,
   ListApiKeysResponse,
   LoginCompleteResponse,
@@ -28,6 +29,7 @@ export interface IdentityService {
   listApiKeys(input: ListApiKeysInput): Promise<ListApiKeysResponse>;
   logout(input: LogoutInput): Promise<LogoutResponse>;
   resolveAuthToken(token: string): Promise<IdentityResolveResult>;
+  resolveUser(userId: string): Promise<IdentityUserLookupResponse>;
   resolveSession(token: string | null): Promise<ResolveSessionResponse>;
   revokeApiKey(input: RevokeApiKeyInput): Promise<RevokeApiKeyResponse>;
   startLogin(input: StartLoginInput): Promise<LoginStartResponse>;
@@ -333,6 +335,14 @@ export function createIdentityService(dependencies: IdentityServiceDependencies)
         actor: resolution.actor,
         organizationId: resolution.organizationId,
         sessionId: resolution.session?.id ?? null
+      };
+    },
+
+    async resolveUser(userId: string): Promise<IdentityUserLookupResponse> {
+      const user = await dependencies.repository.findUserById(userId);
+
+      return {
+        user: user ? mapUser(user) : null
       };
     },
 

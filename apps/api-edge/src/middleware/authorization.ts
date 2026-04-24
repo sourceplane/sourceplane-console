@@ -6,6 +6,7 @@ export function buildAuthorizationRequest(options: {
   auth: AuthContext;
   method: string;
   routeGroup: PublicRouteGroup;
+  subpath: string;
   tenant: TenantContext;
 }): AuthorizationRequest | null {
   if (!options.auth.actor) {
@@ -18,11 +19,12 @@ export function buildAuthorizationRequest(options: {
   }
 
   return {
-    action: deriveAuthorizationAction(options.routeGroup, options.method),
+    action: deriveAuthorizationAction(options.routeGroup, options.subpath, options.method),
     context: {
       attributes: {
         method: options.method,
-        routeGroup: options.routeGroup
+        routeGroup: options.routeGroup,
+        subpath: options.subpath
       },
       memberships: []
     },
@@ -60,10 +62,45 @@ function buildAuthorizationResource(
   };
 }
 
-function deriveAuthorizationAction(routeGroup: PublicRouteGroup, method: string): string {
+function deriveAuthorizationAction(routeGroup: PublicRouteGroup, subpath: string, method: string): string {
+  if (routeGroup === "/v1/organizations") {
+    return deriveOrganizationAuthorizationAction(subpath, method);
+  }
+
   const resourceName = routeGroup.slice(4).replace(/\//g, "_").replace(/s$/, "");
 
   return `${resourceName}.${actionSuffixForMethod(method)}`;
+}
+
+function deriveOrganizationAuthorizationAction(subpath: string, method: string): string {
+  const normalizedSubpath = subpath === "/" ? "/" : subpath.replace(/\/$/u, "");
+  const segments = normalizedSubpath.split("/").filter(Boolean);
+
+  if (segments.length === 0) {
+    return method.toUpperCase() === "POST" ? "organization.create" : "organization.list";
+  }
+
+  if (segments[0] === "invites" && segments[2] === "accept") {
+    return "organization.invite.accept";
+  }
+
+  if (segments[1] === "members" && segments.length === 2) {
+    return "organization.member.list";
+  }
+
+  if (segments[1] === "members" && segments.length === 3) {
+    return method.toUpperCase() === "DELETE" ? "organization.member.remove" : "organization.member.update";
+  }
+
+  if (segments[1] === "invites" && segments.length === 2) {
+    return method.toUpperCase() === "POST" ? "organization.invite.create" : "organization.invite.list";
+  }
+
+  if (segments[1] === "invites" && segments.length === 3) {
+    return method.toUpperCase() === "DELETE" ? "organization.invite.revoke" : `organization.invite.${actionSuffixForMethod(method)}`;
+  }
+
+  return `organization.${actionSuffixForMethod(method)}`;
 }
 
 function actionSuffixForMethod(method: string): string {

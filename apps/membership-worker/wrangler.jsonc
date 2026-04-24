@@ -1,0 +1,72 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "sourceplane-membership-worker",
+  "main": "src/index.ts",
+  "workers_dev": false,
+  "compatibility_date": "2026-04-24",
+  "compatibility_flags": ["nodejs_compat"],
+  // Set with `wrangler secret put MEMBERSHIP_TOKEN_HASH_SECRET` in every environment.
+  // The IDENTITY service binding is used only for narrow invite-acceptance user lookup.
+  "d1_databases": [
+    {
+      "binding": "MEMBERSHIP_DB",
+      "database_name": "sourceplane-membership-local",
+      "database_id": "33333333-3333-3333-3333-333333333333",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "services": [
+    {
+      "binding": "IDENTITY",
+      "service": "sourceplane-identity-worker"
+    }
+  ],
+  "vars": {
+    "APP_NAME": "membership-worker",
+    "ENVIRONMENT": "local"
+  },
+  "env": {
+    "preview": {
+      "name": "sourceplane-membership-worker-preview",
+      "d1_databases": [
+        {
+          "binding": "MEMBERSHIP_DB",
+          "database_name": "sourceplane-membership-preview",
+          "database_id": "44444444-4444-4444-4444-444444444444",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "services": [
+        {
+          "binding": "IDENTITY",
+          "service": "sourceplane-identity-worker-preview"
+        }
+      ],
+      "vars": {
+        "APP_NAME": "membership-worker",
+        "ENVIRONMENT": "preview"
+      }
+    },
+    "production": {
+      "name": "sourceplane-membership-worker-production",
+      "d1_databases": [
+        {
+          "binding": "MEMBERSHIP_DB",
+          "database_name": "sourceplane-membership-production",
+          "database_id": "55555555-5555-5555-5555-555555555555",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "services": [
+        {
+          "binding": "IDENTITY",
+          "service": "sourceplane-identity-worker-production"
+        }
+      ],
+      "vars": {
+        "APP_NAME": "membership-worker",
+        "ENVIRONMENT": "production"
+      }
+    }
+  }
+}

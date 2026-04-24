@@ -160,6 +160,11 @@ export const identityResolveResultSchema = z
     sessionId: nullableIdentifierSchema.optional()
   })
   .strict();
+export const identityUserLookupRequestSchema = z
+  .object({
+    userId: z.string().min(1)
+  })
+  .strict();
 export const loginStartRequestSchema = z
   .object({
     email: emailAddressSchema
@@ -198,6 +203,11 @@ export const identityUserSchema = z
     createdAt: isoDatetimeSchema,
     id: z.string().min(1),
     primaryEmail: emailAddressSchema
+  })
+  .strict();
+export const identityUserLookupResponseSchema = z
+  .object({
+    user: identityUserSchema.nullable()
   })
   .strict();
 export const issuedSessionSchema = z
@@ -303,11 +313,13 @@ export const credentialActorSchema = z.union([userActorSchema, servicePrincipalA
 export type RbacActor = z.infer<typeof rbacActorSchema>;
 export type IdentityResolveRequest = z.infer<typeof identityResolveRequestSchema>;
 export type IdentityResolveResult = z.infer<typeof identityResolveResultSchema>;
+export type IdentityUserLookupRequest = z.infer<typeof identityUserLookupRequestSchema>;
 export type LoginStartRequest = z.infer<typeof loginStartRequestSchema>;
 export type LoginDelivery = z.infer<typeof loginDeliverySchema>;
 export type LoginStartResponse = z.infer<typeof loginStartResponseSchema>;
 export type LoginCompleteRequest = z.infer<typeof loginCompleteRequestSchema>;
 export type IdentityUser = z.infer<typeof identityUserSchema>;
+export type IdentityUserLookupResponse = z.infer<typeof identityUserLookupResponseSchema>;
 export type IssuedSession = z.infer<typeof issuedSessionSchema>;
 export type SessionView = z.infer<typeof sessionViewSchema>;
 export type LoginCompleteResponse = z.infer<typeof loginCompleteResponseSchema>;
@@ -346,6 +358,10 @@ export function assertValidIdentityResolveResult(value: unknown): IdentityResolv
   return assertWithSchema("IdentityResolveResult", identityResolveResultSchema, value);
 }
 
+export function assertValidIdentityUserLookupResponse(value: unknown): IdentityUserLookupResponse {
+  return assertWithSchema("IdentityUserLookupResponse", identityUserLookupResponseSchema, value);
+}
+
 export function isActorType(value: string): value is ActorType {
   return actorTypes.includes(value as ActorType);
 }
@@ -378,4 +394,8 @@ export function isAuthorizationRoleAssignmentMembershipFact(
 
 export function isIdentityResolveResult(value: unknown): value is IdentityResolveResult {
   return isWithSchema(identityResolveResultSchema, value);
+}
+
+export function isIdentityUserLookupResponse(value: unknown): value is IdentityUserLookupResponse {
+  return isWithSchema(identityUserLookupResponseSchema, value);
 }

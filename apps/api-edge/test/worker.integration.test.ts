@@ -3,16 +3,21 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  acceptOrganizationInviteResponseSchema,
   authorizationRequestSchema,
+  createOrganizationInviteResponseSchema,
+  createOrganizationResponseSchema,
   createSuccessResponse,
   isApiErrorEnvelope,
   loginCompleteResponseSchema,
   loginStartResponseSchema,
+  updateOrganizationResponseSchema,
   type ApiErrorEnvelope,
   type ApiSuccessEnvelope
 } from "@sourceplane/contracts";
 import { createApiEdgeApp, type ApiEdgeEnv } from "@sourceplane/api-edge";
 import identityWorker, { type IdentityWorkerEnv } from "@sourceplane/identity-worker";
+import membershipWorker, { type MembershipWorkerEnv } from "@sourceplane/membership-worker";
 import policyWorker, { type PolicyWorkerEnv } from "@sourceplane/policy-worker";
 import { applyD1Migrations, createServiceBinding, createTestD1Database } from "@sourceplane/testing";
 
@@ -26,6 +31,7 @@ const executionContext: ExecutionContext = {
 };
 
 const identityMigrationsDirectory = resolve(import.meta.dirname, "..", "..", "identity-worker", "migrations");
+const membershipMigrationsDirectory = resolve(import.meta.dirname, "..", "..", "membership-worker", "migrations");
 
 interface RouteInventoryData {
   groups: Array<{ clientKey: string; group: string; summary: string }>;
@@ -135,6 +141,76 @@ function createPolicyWorkerTestEnv(): PolicyWorkerEnv {
   return {
     APP_NAME: "policy-worker",
     ENVIRONMENT: "local"
+  };
+}
+
+async function createMembershipWorkerTestHarness(
+  identityEnv: IdentityWorkerEnv
+): Promise<{ close(): void; env: MembershipWorkerEnv }> {
+  const database = createTestD1Database();
+  await applyD1Migrations(database.binding, membershipMigrationsDirectory);
+
+  return {
+    close(): void {
+      database.close();
+    },
+    env: {
+      APP_NAME: "membership-worker",
+      ENVIRONMENT: "local",
+      IDENTITY: createServiceBinding((request) => identityWorker.fetch(request, identityEnv, executionContext)),
+      MEMBERSHIP_DB: database.binding,
+      MEMBERSHIP_TOKEN_HASH_SECRET: "membership-test-secret"
+    }
+  };
+}
+
+async function createEdgeInteractiveSession(
+  worker: ReturnType<typeof createApiEdgeApp>,
+  env: ApiEdgeEnv,
+  email: string
+): Promise<{ sessionId: string; token: string; userId: string }> {
+  const loginStartResponse = await worker.fetch(
+    new Request("https://api.sourceplane.test/v1/auth/login/start", {
+      body: JSON.stringify({
+        email
+      }),
+      headers: {
+        "content-type": "application/json"
+      },
+      method: "POST"
+    }),
+    env,
+    executionContext
+  );
+  const loginStartPayload = assertApiSuccessEnvelope(await readJsonValue(loginStartResponse), isRecord);
+  const loginStartData = loginStartResponseSchema.parse(loginStartPayload.data);
+  const code = loginStartData.delivery.mode === "local_debug" ? loginStartData.delivery.code : null;
+
+  if (!code) {
+    throw new Error("Expected local_debug delivery during tests.");
+  }
+
+  const loginCompleteResponse = await worker.fetch(
+    new Request("https://api.sourceplane.test/v1/auth/login/complete", {
+      body: JSON.stringify({
+        challengeId: loginStartData.challengeId,
+        code
+      }),
+      headers: {
+        "content-type": "application/json"
+      },
+      method: "POST"
+    }),
+    env,
+    executionContext
+  );
+  const loginCompletePayload = assertApiSuccessEnvelope(await readJsonValue(loginCompleteResponse), isRecord);
+  const loginCompleteData = loginCompleteResponseSchema.parse(loginCompletePayload.data);
+
+  return {
+    sessionId: loginCompleteData.session.id,
+    token: loginCompleteData.session.token,
+    userId: loginCompleteData.user.id
   };
 }
 
@@ -728,7 +804,8 @@ describe("api-edge transport behavior", () => {
             context: {
               attributes: {
                 method: "POST",
-                routeGroup: "/v1/projects"
+                routeGroup: "/v1/projects",
+                subpath: "/"
               },
               memberships: []
             },
@@ -802,5 +879,159 @@ describe("api-edge transport behavior", () => {
       ok: true,
       projectId: "prj_policy_allow"
     });
+  });
+
+  it("uses real membership facts to allow owners and deny viewers on organization updates", async () => {
+    const identityHarness = await createIdentityWorkerTestHarness();
+    const membershipHarness = await createMembershipWorkerTestHarness(identityHarness.env);
+    const worker = createApiEdgeApp({
+      idempotencyStore: new MemoryIdempotencyStore()
+    });
+
+    try {
+      const env: ApiEdgeEnv = {
+        APP_NAME: "api-edge",
+        ENVIRONMENT: "local",
+        IDENTITY: createServiceBinding((request) => identityWorker.fetch(request, identityHarness.env, executionContext)),
+        MEMBERSHIP: createServiceBinding((request) => membershipWorker.fetch(request, membershipHarness.env, executionContext)),
+        POLICY: createServiceBinding((request) => policyWorker.fetch(request, createPolicyWorkerTestEnv(), executionContext))
+      };
+
+      const ownerSession = await createEdgeInteractiveSession(worker, env, "owner@example.com");
+      const viewerSession = await createEdgeInteractiveSession(worker, env, "viewer@example.com");
+
+      const createOrganizationResponse = await worker.fetch(
+        new Request("https://api.sourceplane.test/v1/organizations", {
+          body: JSON.stringify({
+            name: "Acme Platform"
+          }),
+          headers: {
+            authorization: `Bearer ${ownerSession.token}`,
+            "content-type": "application/json",
+            "Idempotency-Key": "idem_membership_org_create"
+          },
+          method: "POST"
+        }),
+        env,
+        executionContext
+      );
+
+      expect(createOrganizationResponse.status).toBe(200);
+
+      const createOrganizationPayload = assertApiSuccessEnvelope(await readJsonValue(createOrganizationResponse), isRecord);
+      const createdOrganization = createOrganizationResponseSchema.parse(createOrganizationPayload.data);
+
+      const ownerUpdateResponse = await worker.fetch(
+        new Request(`https://api.sourceplane.test/v1/organizations/${createdOrganization.organization.id}`, {
+          body: JSON.stringify({
+            name: "Acme Platform Renamed"
+          }),
+          headers: {
+            authorization: `Bearer ${ownerSession.token}`,
+            "content-type": "application/json"
+          },
+          method: "PATCH"
+        }),
+        env,
+        executionContext
+      );
+
+      expect(ownerUpdateResponse.status).toBe(200);
+
+      const ownerUpdatePayload = assertApiSuccessEnvelope(await readJsonValue(ownerUpdateResponse), isRecord);
+      const updatedOrganization = updateOrganizationResponseSchema.parse(ownerUpdatePayload.data);
+
+      expect(updatedOrganization.organization.createdAt).toBe(createdOrganization.organization.createdAt);
+      expect(updatedOrganization.organization.id).toBe(createdOrganization.organization.id);
+      expect(updatedOrganization.organization.name).toBe("Acme Platform Renamed");
+      expect(updatedOrganization.organization.slug).toBe(createdOrganization.organization.slug);
+      expect(typeof updatedOrganization.organization.updatedAt).toBe("string");
+
+      const createInviteResponse = await worker.fetch(
+        new Request(`https://api.sourceplane.test/v1/organizations/${createdOrganization.organization.id}/invites`, {
+          body: JSON.stringify({
+            email: "viewer@example.com",
+            role: "viewer"
+          }),
+          headers: {
+            authorization: `Bearer ${ownerSession.token}`,
+            "content-type": "application/json",
+            "Idempotency-Key": "idem_membership_invite_create"
+          },
+          method: "POST"
+        }),
+        env,
+        executionContext
+      );
+
+      expect(createInviteResponse.status).toBe(200);
+
+      const createInvitePayload = assertApiSuccessEnvelope(await readJsonValue(createInviteResponse), isRecord);
+      const createdInvite = createOrganizationInviteResponseSchema.parse(createInvitePayload.data);
+      const inviteToken = createdInvite.delivery.mode === "local_debug" ? createdInvite.delivery.acceptToken : null;
+
+      if (!inviteToken) {
+        throw new Error("Expected local_debug invite delivery during tests.");
+      }
+
+      const acceptInviteResponse = await worker.fetch(
+        new Request(`https://api.sourceplane.test/v1/organizations/invites/${createdInvite.invite.id}/accept`, {
+          body: JSON.stringify({
+            token: inviteToken
+          }),
+          headers: {
+            authorization: `Bearer ${viewerSession.token}`,
+            "content-type": "application/json",
+            "Idempotency-Key": "idem_membership_invite_accept"
+          },
+          method: "POST"
+        }),
+        env,
+        executionContext
+      );
+
+      expect(acceptInviteResponse.status).toBe(200);
+
+      const acceptInvitePayload = assertApiSuccessEnvelope(await readJsonValue(acceptInviteResponse), isRecord);
+      expect(acceptOrganizationInviteResponseSchema.parse(acceptInvitePayload.data)).toMatchObject({
+        invite: {
+          id: createdInvite.invite.id,
+          status: "accepted"
+        },
+        membership: {
+          organizationId: createdOrganization.organization.id,
+          role: "viewer",
+          userId: viewerSession.userId
+        }
+      });
+
+      const viewerUpdateResponse = await worker.fetch(
+        new Request(`https://api.sourceplane.test/v1/organizations/${createdOrganization.organization.id}`, {
+          body: JSON.stringify({
+            name: "Viewer Attempt"
+          }),
+          headers: {
+            authorization: `Bearer ${viewerSession.token}`,
+            "content-type": "application/json"
+          },
+          method: "PATCH"
+        }),
+        env,
+        executionContext
+      );
+
+      expect(viewerUpdateResponse.status).toBe(403);
+
+      const viewerUpdatePayload = assertApiError(await readJsonValue(viewerUpdateResponse));
+
+      expect(viewerUpdatePayload.error.code).toBe("forbidden");
+      expect(viewerUpdatePayload.error.details).toEqual({
+        policyVersion: 1,
+        reason: "deny.action_not_permitted"
+      });
+    } finally {
+      membershipHarness.close();
+      identityHarness.close();
+    }
   });
 });

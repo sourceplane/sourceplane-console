@@ -33,6 +33,10 @@
       "types": "./src/fixtures/index.ts",
       "import": "./dist/fixtures/index.js"
     },
+    "./membership": {
+      "types": "./src/membership/index.ts",
+      "import": "./dist/membership/index.js"
+    },
     "./node": {
       "types": "./src/node.ts",
       "import": "./dist/node.js"

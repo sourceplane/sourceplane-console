@@ -125,6 +125,7 @@ export interface IdentityRepository {
   findApiKeyByIdForOwner(apiKeyId: string, ownerUserId: string): Promise<ApiKeyRecord | null>;
   findLoginChallengeById(challengeId: string): Promise<LoginChallengeRecord | null>;
   findSessionById(sessionId: string): Promise<SessionRecord | null>;
+  findUserById(userId: string): Promise<UserRecord | null>;
   incrementLoginChallengeAttempt(challengeId: string, attemptedAt: string): Promise<void>;
   listApiKeysForUser(ownerUserId: string): Promise<ApiKeyRecord[]>;
   revokeApiKeyAndServicePrincipal(apiKeyId: string, revokedAt: string): Promise<boolean>;
