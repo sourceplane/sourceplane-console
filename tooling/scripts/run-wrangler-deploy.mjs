@@ -70,7 +70,7 @@ function prepareDeployConfig({
 
   if (bindingsNeedingResolution.length > 0 || kvBindingsNeedingResolution.length > 0) {
     let databaseIdsByName = loadD1DatabaseIdsByName(wranglerCommand);
-    let kvNamespaceIdsByTitle = loadKvNamespaceIdsByTitle(wranglerCommand);
+    let kvNamespaceIdsByTitle = loadKvNamespaceIdsByTitle();
 
     for (const binding of bindingsNeedingResolution) {
       let databaseId = databaseIdsByName.get(binding.database_name);
@@ -101,10 +101,9 @@ function prepareDeployConfig({
 
       if (!namespaceId) {
         ensureKvNamespaceExists({
-          namespaceTitle,
-          wranglerCommand
+          namespaceTitle
         });
-        kvNamespaceIdsByTitle = loadKvNamespaceIdsByTitle(wranglerCommand);
+        kvNamespaceIdsByTitle = loadKvNamespaceIdsByTitle();
         namespaceId = kvNamespaceIdsByTitle.get(namespaceTitle);
       }
 
@@ -199,40 +198,59 @@ function loadD1DatabaseIdsByName(wranglerCommand) {
 }
 
 function ensureKvNamespaceExists({
-  namespaceTitle,
-  wranglerCommand
+  namespaceTitle
 }) {
   process.stdout.write(`Creating missing KV namespace '${namespaceTitle}'.\n`);
-  execFileSync(wranglerCommand, ["kv", "namespace", "create", namespaceTitle], {
-    stdio: "inherit"
+  const response = callCloudflareApi({
+    body: {
+      title: namespaceTitle
+    },
+    method: "POST",
+    pathname: "/storage/kv/namespaces"
   });
+
+  if (!isRecord(response.result) || typeof response.result.id !== "string") {
+    throw new TypeError(`Cloudflare did not return a KV namespace ID for '${namespaceTitle}'.`);
+  }
 }
 
-function loadKvNamespaceIdsByTitle(wranglerCommand) {
-  const output = execFileSync(wranglerCommand, ["kv", "namespace", "list", "--json"], {
-    encoding: "utf8"
-  });
-  const parsedValue = JSON.parse(output);
-
-  if (!Array.isArray(parsedValue)) {
-    throw new TypeError("Expected `wrangler kv namespace list --json` to return an array.");
-  }
-
+function loadKvNamespaceIdsByTitle() {
   const namespacesByTitle = new Map();
+  let page = 1;
 
-  for (const entry of parsedValue) {
-    if (!isRecord(entry)) {
-      continue;
+  while (true) {
+    const response = callCloudflareApi({
+      method: "GET",
+      pathname: `/storage/kv/namespaces?page=${page}&per_page=100`
+    });
+
+    if (!Array.isArray(response.result)) {
+      throw new TypeError("Expected the Cloudflare KV namespaces API to return an array.");
     }
 
-    const namespaceTitle = typeof entry.title === "string" ? entry.title : null;
-    const namespaceId = typeof entry.id === "string" ? entry.id : null;
+    for (const entry of response.result) {
+      if (!isRecord(entry)) {
+        continue;
+      }
 
-    if (!namespaceTitle || !namespaceId) {
-      continue;
+      const namespaceTitle = typeof entry.title === "string" ? entry.title : null;
+      const namespaceId = typeof entry.id === "string" ? entry.id : null;
+
+      if (!namespaceTitle || !namespaceId) {
+        continue;
+      }
+
+      namespacesByTitle.set(namespaceTitle, namespaceId);
     }
 
-    namespacesByTitle.set(namespaceTitle, namespaceId);
+    const resultInfo = isRecord(response.result_info) ? response.result_info : null;
+    const totalPages = typeof resultInfo?.total_pages === "number" ? resultInfo.total_pages : page;
+
+    if (page >= totalPages) {
+      break;
+    }
+
+    page += 1;
   }
 
   return namespacesByTitle;
@@ -318,6 +336,45 @@ function toKebabCase(value) {
 
 function isRecord(value) {
   return Boolean(value) && typeof value === "object";
+}
+
+function callCloudflareApi({
+  method,
+  pathname,
+  body
+}) {
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+
+  if (!accountId || !apiToken) {
+    throw new Error("Cloudflare API access requires CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN.");
+  }
+
+  const curlArguments = [
+    "-sS",
+    "-X",
+    method,
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}${pathname}`,
+    "-H",
+    `Authorization: Bearer ${apiToken}`,
+    "-H",
+    "Content-Type: application/json"
+  ];
+
+  if (body !== undefined) {
+    curlArguments.push("--data", JSON.stringify(body));
+  }
+
+  const output = execFileSync("curl", curlArguments, {
+    encoding: "utf8"
+  });
+  const response = JSON.parse(output);
+
+  if (!isRecord(response) || response.success !== true) {
+    throw new Error(`Cloudflare API request failed for ${method} ${pathname}: ${output}`);
+  }
+
+  return response;
 }
 
 function parseJsonc(sourceText) {
