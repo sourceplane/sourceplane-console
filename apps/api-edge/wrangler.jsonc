@@ -9,13 +9,17 @@
     "ENVIRONMENT": "local"
   },
   // Future bounded-context bindings remain optional until their Workers land.
-  // Wire them here with the same binding names from src/env.ts when those apps exist:
-  // POLICY, MEMBERSHIP, PROJECTS, RESOURCES, CONFIG, RUNTIME, EVENTS, METERING, BILLING
+  // Wire remaining services here with the same binding names from src/env.ts:
+  // MEMBERSHIP, PROJECTS, RESOURCES, CONFIG, RUNTIME, EVENTS, METERING, BILLING
   // Add EDGE_IDEMPOTENCY as a KV binding for preview/production idempotency storage.
   "services": [
     {
       "binding": "IDENTITY",
       "service": "sourceplane-identity-worker"
+    },
+    {
+      "binding": "POLICY",
+      "service": "sourceplane-policy-worker"
     }
   ],
   "env": {
@@ -29,6 +33,10 @@
         {
           "binding": "IDENTITY",
           "service": "sourceplane-identity-worker-preview"
+        },
+        {
+          "binding": "POLICY",
+          "service": "sourceplane-policy-worker-preview"
         }
       ]
     },
@@ -42,6 +50,10 @@
         {
           "binding": "IDENTITY",
           "service": "sourceplane-identity-worker-production"
+        },
+        {
+          "binding": "POLICY",
+          "service": "sourceplane-policy-worker-production"
         }
       ]
     }

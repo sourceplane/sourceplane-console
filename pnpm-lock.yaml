@@ -57,6 +57,9 @@ importers:
       '@sourceplane/identity-worker':
         specifier: workspace:*
         version: link:../identity-worker
+      '@sourceplane/policy-worker':
+        specifier: workspace:*
+        version: link:../policy-worker
       '@sourceplane/testing':
         specifier: workspace:*
         version: link:../../packages/testing
@@ -76,6 +79,19 @@ importers:
       '@sourceplane/testing':
         specifier: workspace:*
         version: link:../../packages/testing
+      wrangler:
+        specifier: ^4
+        version: 4.84.1(@cloudflare/workers-types@4.20260422.1)
+
+  apps/policy-worker:
+    dependencies:
+      '@sourceplane/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@sourceplane/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+    devDependencies:
       wrangler:
         specifier: ^4
         version: 4.84.1(@cloudflare/workers-types@4.20260422.1)

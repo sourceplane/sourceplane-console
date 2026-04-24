@@ -1,5 +1,5 @@
 {
-  "name": "@sourceplane/api-edge",
+  "name": "@sourceplane/policy-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "deploy": "node ../../tooling/scripts/run-wrangler-deploy.mjs",
     "dev": "wrangler dev --local",
     "lint": "eslint src test",
-    "test": "vitest run test/worker.integration.test.ts",
+    "test": "vitest run test/engine.test.ts test/policy-worker.integration.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -22,9 +22,6 @@
     "@sourceplane/shared": "workspace:*"
   },
   "devDependencies": {
-    "@sourceplane/identity-worker": "workspace:*",
-    "@sourceplane/policy-worker": "workspace:*",
-    "@sourceplane/testing": "workspace:*",
     "wrangler": "^4"
   }
 }
