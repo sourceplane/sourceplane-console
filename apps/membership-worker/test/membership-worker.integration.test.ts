@@ -236,6 +236,42 @@ describe("membership-worker", () => {
     }
   });
 
+  it("uses a fallback token hash secret outside production when none is configured", async () => {
+    const harness = await createHarness({
+      membershipEnv: {
+        ENVIRONMENT: "preview",
+        MEMBERSHIP_TOKEN_HASH_SECRET: undefined
+      }
+    });
+
+    try {
+      const ownerSession = await createInteractiveSession(harness.identityEnv, "preview-owner@example.com");
+
+      const createOrganization = await callSuccessEnvelope(
+        membershipWorker.fetch(
+          new Request("https://membership.sourceplane.test/internal/edge/v1/organizations", {
+            body: JSON.stringify({
+              name: "Preview Org"
+            }),
+            headers: {
+              "content-type": "application/json",
+              "x-sourceplane-actor-id": ownerSession.userId,
+              "x-sourceplane-actor-type": "user",
+              "x-sourceplane-session-id": ownerSession.sessionId
+            },
+            method: "POST"
+          }),
+          harness.membershipEnv,
+          executionContext
+        )
+      );
+
+      expect(createOrganizationResponseSchema.parse(createOrganization.data).organization.name).toBe("Preview Org");
+    } finally {
+      harness.close();
+    }
+  });
+
   it("returns validation errors without leaking implementation details", async () => {
     const harness = await createHarness();
 
@@ -276,7 +312,10 @@ async function callSuccessEnvelope<TData>(responsePromise: Promise<Response>): P
   return assertSuccessEnvelope<TData>(payload);
 }
 
-async function createHarness(): Promise<{
+async function createHarness(overrides: {
+  identityEnv?: Partial<IdentityWorkerEnv>;
+  membershipEnv?: Partial<MembershipWorkerEnv>;
+} = {}): Promise<{
   close(): void;
   identityEnv: IdentityWorkerEnv;
   membershipEnv: MembershipWorkerEnv;
@@ -290,14 +329,16 @@ async function createHarness(): Promise<{
     APP_NAME: "identity-worker",
     ENVIRONMENT: "local",
     IDENTITY_DB: identityDatabase.binding,
-    IDENTITY_TOKEN_HASH_SECRET: "identity-test-secret"
+    IDENTITY_TOKEN_HASH_SECRET: "identity-test-secret",
+    ...overrides.identityEnv
   };
   const membershipEnv: MembershipWorkerEnv = {
     APP_NAME: "membership-worker",
     ENVIRONMENT: "local",
     IDENTITY: createServiceBinding((request) => identityWorker.fetch(request, identityEnv, executionContext)),
     MEMBERSHIP_DB: membershipDatabase.binding,
-    MEMBERSHIP_TOKEN_HASH_SECRET: "membership-test-secret"
+    MEMBERSHIP_TOKEN_HASH_SECRET: "membership-test-secret",
+    ...overrides.membershipEnv
   };
 
   return {

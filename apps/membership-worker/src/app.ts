@@ -31,7 +31,7 @@ export function createMembershipWorkerApp(options: MembershipWorkerAppOptions = 
           identityDirectory: createIdentityDirectory(env.IDENTITY),
           repository: new D1MembershipRepository(env.MEMBERSHIP_DB),
           serviceName: env.APP_NAME,
-          tokenHashSecret: env.MEMBERSHIP_TOKEN_HASH_SECRET
+          tokenHashSecret: resolveTokenHashSecret(env, stage)
         });
       const url = new URL(request.url);
 
@@ -89,6 +89,26 @@ export function createMembershipWorkerApp(options: MembershipWorkerAppOptions = 
       }
     }
   };
+}
+
+function resolveTokenHashSecret(
+  env: MembershipWorkerEnv,
+  stage: ReturnType<typeof parseDeploymentEnvironment>
+): string {
+  const configuredSecret = env.MEMBERSHIP_TOKEN_HASH_SECRET?.trim();
+  if (configuredSecret) {
+    return configuredSecret;
+  }
+
+  if (stage !== "production") {
+    console.warn("membership-worker using non-production fallback token hash secret", {
+      service: env.APP_NAME,
+      stage
+    });
+    return `${env.APP_NAME}:${stage}:fallback-token-hash-secret`;
+  }
+
+  throw new SourceplaneHttpError(500, "internal_error", "Membership token hashing is not configured for production.");
 }
 
 async function parseJsonBody(request: Request): Promise<unknown> {
