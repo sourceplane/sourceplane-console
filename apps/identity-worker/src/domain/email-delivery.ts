@@ -18,7 +18,7 @@ export function createLoginCodeDelivery(
   env: IdentityWorkerEnv,
   stage: DeploymentEnvironment
 ): LoginCodeDelivery {
-  if (stage === "local" && !hasConfiguredEmailProvider(env)) {
+  if (shouldUseDebugDelivery(env, stage)) {
     return {
       send(input: LoginCodeDeliveryInput): Promise<LoginDelivery> {
         return Promise.resolve({
@@ -64,6 +64,10 @@ export function createLoginCodeDelivery(
       };
     }
   };
+}
+
+function shouldUseDebugDelivery(env: IdentityWorkerEnv, stage: DeploymentEnvironment): boolean {
+  return env.AUTH_LOGIN_DELIVERY_MODE === "local_debug" || (stage === "local" && !hasConfiguredEmailProvider(env));
 }
 
 function hasConfiguredEmailProvider(

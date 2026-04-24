@@ -5,6 +5,9 @@
   "workers_dev": false,
   "compatibility_date": "2026-04-22",
   "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
   // Set with `wrangler secret put IDENTITY_TOKEN_HASH_SECRET` in every environment.
   // Optional generic email delivery:
   // - vars: AUTH_EMAIL_API_URL, AUTH_EMAIL_FROM
@@ -22,6 +25,7 @@
   ],
   "vars": {
     "APP_NAME": "identity-worker",
+    "AUTH_LOGIN_DELIVERY_MODE": "local_debug",
     "ENVIRONMENT": "local"
   },
   "env": {
@@ -37,6 +41,7 @@
       ],
       "vars": {
         "APP_NAME": "identity-worker",
+        "AUTH_LOGIN_DELIVERY_MODE": "local_debug",
         "ENVIRONMENT": "preview"
       }
     },
