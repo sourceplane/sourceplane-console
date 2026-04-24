@@ -117,7 +117,7 @@ function applyRemoteD1Migrations({
     process.stdout.write(`Applying D1 migrations for ${bindingName} (${targetEnvironment}).\n`);
     execFileSync(
       wranglerCommand,
-      ["d1", "migrations", "apply", bindingName, "--env", targetEnvironment, "--config", configFilePath],
+      ["d1", "migrations", "apply", bindingName, "--remote", "--env", targetEnvironment, "--config", configFilePath],
       {
         stdio: "inherit"
       }
