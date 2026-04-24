@@ -1,5 +1,7 @@
 import { SourceplaneClient } from "@sourceplane/sdk";
 
+import { resolveApiBaseUrl } from "./runtime-config.js";
+
 const ACTIVE_ORG_KEY = "sourceplane.activeOrgId";
 const TOKEN_KEY = "sourceplane.sessionToken";
 
@@ -49,6 +51,5 @@ export function resolveBaseUrl(): string {
   const meta = import.meta as ImportMeta & { env?: Record<string, string | undefined> };
   const env = meta.env ?? {};
   const value: unknown = env.VITE_API_BASE_URL;
-  const trimmed = typeof value === "string" ? value.trim() : "";
-  return trimmed.length > 0 ? trimmed : "http://127.0.0.1:8787";
+  return resolveApiBaseUrl(value);
 }

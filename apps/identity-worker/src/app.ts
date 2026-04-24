@@ -97,6 +97,12 @@ export function createIdentityWorkerApp(): ExportedHandler<IdentityWorkerEnv> {
           requestId: requestContext.requestId
         });
       } catch (error) {
+        console.error("identity-worker request failed", {
+          error,
+          method: request.method,
+          pathname: url.pathname,
+          requestId: requestContext.requestId
+        });
         return toErrorResponse(error, requestContext.requestId);
       }
     }

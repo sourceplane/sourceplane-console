@@ -4,9 +4,13 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-04-22",
   "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
   "vars": {
     "APP_NAME": "api-edge",
-    "ENVIRONMENT": "local"
+    "ENVIRONMENT": "local",
+    "WEB_CONSOLE_ORIGINS": "http://127.0.0.1:4173"
   },
   // Future bounded-context bindings remain optional until their Workers land.
   // Wire remaining services here with the same binding names from src/env.ts:
@@ -35,8 +39,35 @@
       "name": "sourceplane-api-edge-preview",
       "vars": {
         "APP_NAME": "api-edge",
-        "ENVIRONMENT": "preview"
+        "ENVIRONMENT": "preview",
+        "WEB_CONSOLE_ORIGINS": "https://sourceplane-web-console-preview.rahulvarghesepullely.workers.dev, https://console.sourceplane.ai, https://www.console.sourceplane.ai"
       },
+      "routes": [
+        {
+          "pattern": "console.sourceplane.ai/v1*",
+          "zone_name": "sourceplane.ai"
+        },
+        {
+          "pattern": "console.sourceplane.ai/healthz",
+          "zone_name": "sourceplane.ai"
+        },
+        {
+          "pattern": "console.sourceplane.ai/readyz",
+          "zone_name": "sourceplane.ai"
+        },
+        {
+          "pattern": "www.console.sourceplane.ai/v1*",
+          "zone_name": "sourceplane.ai"
+        },
+        {
+          "pattern": "www.console.sourceplane.ai/healthz",
+          "zone_name": "sourceplane.ai"
+        },
+        {
+          "pattern": "www.console.sourceplane.ai/readyz",
+          "zone_name": "sourceplane.ai"
+        }
+      ],
       "services": [
         {
           "binding": "IDENTITY",
@@ -60,7 +91,8 @@
       "name": "sourceplane-api-edge-production",
       "vars": {
         "APP_NAME": "api-edge",
-        "ENVIRONMENT": "production"
+        "ENVIRONMENT": "production",
+        "WEB_CONSOLE_ORIGINS": "https://console.sourceplane.ai, https://www.console.sourceplane.ai"
       },
       "services": [
         {

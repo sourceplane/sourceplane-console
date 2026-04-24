@@ -44,6 +44,16 @@ from the browser without any extra fixtures:
 Every request is dispatched through `@sourceplane/sdk` against `apps/api-edge`,
 exercising the same code path that the CLI and downstream automation will use.
 
+Hosted verification surfaces:
+
+- Preview workers.dev:
+  `https://sourceplane-web-console-preview.rahulvarghesepullely.workers.dev/login`
+- Preview custom domains:
+  `https://console.sourceplane.ai/login` and `https://www.console.sourceplane.ai/login`
+
+Preview is also configured for debug-code login delivery, so the one-time code is
+shown in the UI there as well while the external email provider is still pending.
+
 ## Workspace Layout
 
 - `apps/`: deployable Cloudflare apps and placeholder bounded-context folders

@@ -174,6 +174,36 @@ describe("identity-worker", () => {
     }
   });
 
+  it("can expose a debug login code in preview when explicitly configured", async () => {
+    const harness = await createHarness({
+      AUTH_LOGIN_DELIVERY_MODE: "local_debug",
+      ENVIRONMENT: "preview"
+    });
+
+    try {
+      const loginStart = await callSuccessEnvelope(
+        identityWorker.fetch(
+          new Request("https://identity.sourceplane.test/internal/edge/v1/auth/login/start", {
+            body: JSON.stringify({
+              email: "preview@example.com"
+            }),
+            headers: {
+              "content-type": "application/json"
+            },
+            method: "POST"
+          }),
+          harness.env,
+          executionContext
+        )
+      );
+
+      const loginStartData = loginStartResponseSchema.parse(loginStart.data);
+      expect(loginStartData.delivery.mode).toBe("local_debug");
+    } finally {
+      harness.close();
+    }
+  });
+
   it("returns a null actor for invalid and expired session credentials", async () => {
     const harness = await createHarness();
 
@@ -394,7 +424,9 @@ async function callSuccessEnvelope<TData>(responsePromise: Promise<Response>): P
   return assertApiSuccessEnvelope<TData>(payload);
 }
 
-async function createHarness(): Promise<{ close(): void; env: IdentityWorkerEnv }> {
+async function createHarness(
+  overrides: Partial<IdentityWorkerEnv> = {}
+): Promise<{ close(): void; env: IdentityWorkerEnv }> {
   const database = createTestD1Database();
   await applyD1Migrations(database.binding, migrationsDirectory);
 
@@ -404,9 +436,11 @@ async function createHarness(): Promise<{ close(): void; env: IdentityWorkerEnv 
     },
     env: {
       APP_NAME: "identity-worker",
+      AUTH_LOGIN_DELIVERY_MODE: "local_debug",
       ENVIRONMENT: "local",
       IDENTITY_DB: database.binding,
-      IDENTITY_TOKEN_HASH_SECRET: "identity-test-secret"
+      IDENTITY_TOKEN_HASH_SECRET: "identity-test-secret",
+      ...overrides
     }
   };
 }

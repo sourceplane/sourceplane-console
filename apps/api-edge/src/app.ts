@@ -237,6 +237,12 @@ export function createApiEdgeApp(options: ApiEdgeAppOptions = {}): ExportedHandl
           requestId: requestContext.requestId
         });
         } catch (error) {
+          console.error("api-edge request failed", {
+            error,
+            method: request.method,
+            pathname: url.pathname,
+            requestId: requestContext.requestId
+          });
           return toErrorResponse(error, requestContext.requestId);
         }
       };

@@ -1,41 +1,92 @@
 # @sourceplane/web-console
 
-Operator-facing web console that talks exclusively to the public `/v1/*` surface
-exposed by `apps/api-edge`. The console never imports Worker bindings or other
-backend internals — every call goes through the typed `@sourceplane/sdk` client
-against the edge.
+Operator-facing web console that talks only to the public `/v1/*` API exposed by
+`apps/api-edge`. The browser never calls Worker bindings directly.
 
-## Local development
+## Where to open it
+
+| Surface | URL | Notes |
+| --- | --- | --- |
+| Local Vite dev | `http://127.0.0.1:4173` | Cross-origin to local edge on `:8787`; local CORS is preconfigured. |
+| Preview workers.dev | `https://sourceplane-web-console-preview.rahulvarghesepullely.workers.dev` | Browser auto-targets `sourceplane-api-edge-preview` on the same workers.dev account hostname. |
+| Preview custom domains | `https://console.sourceplane.ai` and `https://www.console.sourceplane.ai` | Routed to the preview console worker; `/v1*` is routed to preview `api-edge` on the same hostname. |
+
+Deep links such as `/login`, `/orgs/:orgId/projects`, and invite acceptance
+routes are SPA-safe: refreshing the page serves `index.html` instead of a blank
+404 response.
+
+## Login and test flow
+
+### Local
 
 ```bash
-# from the repo root
 pnpm install
-pnpm --filter @sourceplane/api-edge dev      # terminal 1, serves on :8787
-pnpm --filter @sourceplane/web-console dev   # terminal 2, serves on :4173
+pnpm --filter @sourceplane/api-edge dev
+pnpm --filter @sourceplane/web-console dev
 ```
 
-Then open http://127.0.0.1:4173 and follow the magic-link login flow. In local
-mode the identity worker returns the one-time code in the response payload, and
-the console surfaces it inline so no email plumbing is required.
+1. Open `http://127.0.0.1:4173/login`.
+2. Enter any email.
+3. The identity worker is in `local_debug` delivery mode, so the one-time code is
+   returned in the response and shown inline by the console.
+4. Click **Verify**.
+5. Create an organization, invite a second email, accept the invite, create a
+   project, then create an extra environment.
 
-## Environment variables
+### Preview workers.dev
 
-| Variable             | Default                  | Notes                                                                            |
-| -------------------- | ------------------------ | -------------------------------------------------------------------------------- |
-| `VITE_API_BASE_URL`  | `http://127.0.0.1:8787`  | Edge worker base URL. In production set to `/` when fronted by the same hostname. |
+1. Open `https://sourceplane-web-console-preview.rahulvarghesepullely.workers.dev/login`.
+2. Enter any email.
+3. Preview is explicitly configured with `AUTH_LOGIN_DELIVERY_MODE=local_debug`,
+   so the login code is surfaced in the UI even though no external email provider
+   is required.
+4. Continue with the same org → invite → project → environment flow as local.
 
-In production deploys the console is hosted as a Workers Assets binding behind a
-route on the same edge zone, so the SDK can simply use the relative `/`
-base URL. For preview / dev environments hosted under a different origin add the
-console origin to the edge worker's `WEB_CONSOLE_ORIGINS` (comma-separated) so
-preflight requests succeed.
+### Preview custom domains
+
+1. Open `https://console.sourceplane.ai/login` or `https://www.console.sourceplane.ai/login`.
+2. Sign in with any email.
+3. The console and `/v1/*` API are routed on the same hostname, so no browser
+   CORS setup is required on this path.
+4. Verify the full flow in the UI:
+   - create an organization
+   - invite a teammate
+   - accept the invite
+   - create a project
+   - create an extra environment
+
+## Browser/runtime behavior
+
+- Localhost defaults to `http://127.0.0.1:8787`.
+- Preview `workers.dev` hostnames automatically map from
+  `sourceplane-web-console-preview.*.workers.dev` to
+  `sourceplane-api-edge-preview.*.workers.dev`.
+- Custom domains default to same-origin `/`, relying on Cloudflare route
+  precedence to send `/v1*`, `/healthz`, and `/readyz` to `api-edge`.
+- `VITE_API_BASE_URL` still overrides the runtime default when you need to point a
+  build at a different edge URL.
+
+## Cloudflare config owned here
+
+- `apps/web-console/wrangler.jsonc`
+  - local `API_BASE_URL=http://127.0.0.1:8787`
+  - preview routes for `console.sourceplane.ai/*` and `www.console.sourceplane.ai/*`
+  - Worker observability enabled
+- `apps/api-edge/wrangler.jsonc`
+  - local `WEB_CONSOLE_ORIGINS=http://127.0.0.1:4173`
+  - preview origin allowlist for workers.dev + custom domains
+  - preview routes for `console.sourceplane.ai/v1*`, `/healthz`, `/readyz` and
+    the matching `www.` host
+- `apps/identity-worker/wrangler.jsonc`
+  - local and preview `AUTH_LOGIN_DELIVERY_MODE=local_debug`
+  - Worker observability enabled
 
 ## Routes
 
 Live routes backed by today's public API:
 
-- `/login` — magic-link request + verification (`/v1/auth/login/start`, `/login/complete`)
-- `/orgs` — list and create organizations (`/v1/organizations`)
+- `/login` — magic-link request + verification
+- `/orgs` — list and create organizations
 - `/orgs/:orgId/projects` — list, create, archive projects
 - `/orgs/:orgId/members` — members, role updates, invites
 - `/orgs/:orgId/settings` — rename organization
@@ -43,17 +94,16 @@ Live routes backed by today's public API:
 - `/orgs/:orgId/projects/:projectId/settings` — rename project
 - `/invites/:inviteId?token=…` — accept-invite landing route
 
-Placeholder routes — the navigation links are present but render an
-`EmptyState` referencing the spec for the upstream task that owns the API:
+Placeholder routes stay intentionally honest about future work:
 
-| Route                          | Spec                                                | Future task |
-| ------------------------------ | --------------------------------------------------- | ----------- |
-| `/orgs/:orgId/components`      | `specs/components/06-resources-and-component-registry.md` | Task 6      |
-| `/orgs/:orgId/resources`       | `specs/components/06-resources-and-component-registry.md` | Task 6      |
-| `/orgs/:orgId/config`          | `specs/components/09-config-and-secrets.md`         | Task 9      |
-| `/orgs/:orgId/audit`           | `specs/components/11-events-and-audit.md`           | Task 11     |
-| `/orgs/:orgId/usage`           | `specs/components/13-metering-and-usage.md`         | Task 13     |
-| `/orgs/:orgId/billing`         | `specs/components/14-billing-and-plans.md`          | Task 14     |
+| Route | Spec | Future task |
+| --- | --- | --- |
+| `/orgs/:orgId/components` | `specs/components/06-resources-and-component-registry.md` | Task 6 |
+| `/orgs/:orgId/resources` | `specs/components/06-resources-and-component-registry.md` | Task 6 |
+| `/orgs/:orgId/config` | `specs/components/09-config-and-secrets.md` | Task 9 |
+| `/orgs/:orgId/audit` | `specs/components/11-events-and-audit.md` | Task 11 |
+| `/orgs/:orgId/usage` | `specs/components/13-metering-and-usage.md` | Task 13 |
+| `/orgs/:orgId/billing` | `specs/components/14-billing-and-plans.md` | Task 14 |
 
 ## Build
 
@@ -61,5 +111,6 @@ Placeholder routes — the navigation links are present but render an
 pnpm --filter @sourceplane/web-console build
 ```
 
-The Vite build emits to `dist/`, which is consumed by the existing `worker.ts`
-assets binding for `wrangler deploy`.
+The Vite build emits `dist/`, and the Cloudflare Worker serves that directory via
+the existing assets binding with runtime config injection for browser-safe
+deployments.
