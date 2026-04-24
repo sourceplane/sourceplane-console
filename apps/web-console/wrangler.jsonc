@@ -4,6 +4,7 @@
   "main": "src/worker.ts",
   "compatibility_date": "2026-04-22",
   "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
   "observability": {
     "enabled": true
   },
@@ -21,12 +22,12 @@
       "name": "sourceplane-web-console-preview",
       "routes": [
         {
-          "pattern": "console.sourceplane.ai/*",
-          "zone_name": "sourceplane.ai"
+          "pattern": "console.sourceplane.ai",
+          "custom_domain": true
         },
         {
-          "pattern": "www.console.sourceplane.ai/*",
-          "zone_name": "sourceplane.ai"
+          "pattern": "www.console.sourceplane.ai",
+          "custom_domain": true
         }
       ],
       "vars": {
