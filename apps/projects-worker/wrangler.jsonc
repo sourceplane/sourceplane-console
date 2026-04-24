@@ -1,0 +1,52 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "sourceplane-projects-worker",
+  "main": "src/index.ts",
+  "workers_dev": false,
+  "compatibility_date": "2026-04-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "PROJECTS_DB",
+      "database_name": "sourceplane-projects-local",
+      "database_id": "66666666-6666-6666-6666-666666666666",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "APP_NAME": "projects-worker",
+    "ENVIRONMENT": "local"
+  },
+  "env": {
+    "preview": {
+      "name": "sourceplane-projects-worker-preview",
+      "d1_databases": [
+        {
+          "binding": "PROJECTS_DB",
+          "database_name": "sourceplane-projects-preview",
+          "database_id": "77777777-7777-7777-7777-777777777777",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "vars": {
+        "APP_NAME": "projects-worker",
+        "ENVIRONMENT": "preview"
+      }
+    },
+    "production": {
+      "name": "sourceplane-projects-worker-production",
+      "d1_databases": [
+        {
+          "binding": "PROJECTS_DB",
+          "database_name": "sourceplane-projects-production",
+          "database_id": "88888888-8888-8888-8888-888888888888",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "vars": {
+        "APP_NAME": "projects-worker",
+        "ENVIRONMENT": "production"
+      }
+    }
+  }
+}

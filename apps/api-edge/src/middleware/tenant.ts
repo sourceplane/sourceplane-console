@@ -1,9 +1,13 @@
+import { internalOrgIdHeaderName } from "@sourceplane/contracts";
+
 import type { TenantContext } from "../types.js";
 
-export function extractTenantContext(pathname: string): TenantContext {
+export function extractTenantContext(pathname: string, headers?: Headers): TenantContext {
   const segments = pathname.split("/").filter(Boolean);
   const organizationSegment = segmentAfter(segments, "organizations");
-  const orgId = organizationSegment && !isReservedOrganizationSubresource(organizationSegment) ? organizationSegment : null;
+  const pathOrgId = organizationSegment && !isReservedOrganizationSubresource(organizationSegment) ? organizationSegment : null;
+  const headerOrgId = headers?.get(internalOrgIdHeaderName) ?? null;
+  const orgId = pathOrgId ?? headerOrgId;
   const projectId = segmentAfter(segments, "projects");
   const environmentId = segmentAfter(segments, "environments");
   const resourceId = segmentAfter(segments, "resources");

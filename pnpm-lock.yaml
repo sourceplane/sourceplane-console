@@ -63,6 +63,9 @@ importers:
       '@sourceplane/policy-worker':
         specifier: workspace:*
         version: link:../policy-worker
+      '@sourceplane/projects-worker':
+        specifier: workspace:*
+        version: link:../projects-worker
       '@sourceplane/testing':
         specifier: workspace:*
         version: link:../../packages/testing
@@ -114,6 +117,22 @@ importers:
         specifier: workspace:*
         version: link:../../packages/shared
     devDependencies:
+      wrangler:
+        specifier: ^4
+        version: 4.84.1(@cloudflare/workers-types@4.20260422.1)
+
+  apps/projects-worker:
+    dependencies:
+      '@sourceplane/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@sourceplane/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+    devDependencies:
+      '@sourceplane/testing':
+        specifier: workspace:*
+        version: link:../../packages/testing
       wrangler:
         specifier: ^4
         version: 4.84.1(@cloudflare/workers-types@4.20260422.1)

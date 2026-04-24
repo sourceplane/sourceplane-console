@@ -67,9 +67,35 @@ function deriveAuthorizationAction(routeGroup: PublicRouteGroup, subpath: string
     return deriveOrganizationAuthorizationAction(subpath, method);
   }
 
+  if (routeGroup === "/v1/projects") {
+    return deriveProjectsAuthorizationAction(subpath, method);
+  }
+
   const resourceName = routeGroup.slice(4).replace(/\//g, "_").replace(/s$/, "");
 
   return `${resourceName}.${actionSuffixForMethod(method)}`;
+}
+
+function deriveProjectsAuthorizationAction(subpath: string, method: string): string {
+  const normalizedSubpath = subpath === "/" ? "/" : subpath.replace(/\/$/u, "");
+  const segments = normalizedSubpath.split("/").filter(Boolean);
+
+  if (segments.length === 0) {
+    return method.toUpperCase() === "POST" ? "project.create" : "project.read";
+  }
+
+  if (segments.length === 1) {
+    return `project.${actionSuffixForMethod(method)}`;
+  }
+
+  if (segments[1] === "environments") {
+    if (segments.length === 2) {
+      return method.toUpperCase() === "POST" ? "environment.create" : "environment.read";
+    }
+    return `environment.${actionSuffixForMethod(method)}`;
+  }
+
+  return `project.${actionSuffixForMethod(method)}`;
 }
 
 function deriveOrganizationAuthorizationAction(subpath: string, method: string): string {
