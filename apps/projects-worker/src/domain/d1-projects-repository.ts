@@ -38,59 +38,55 @@ export class D1ProjectsRepository implements ProjectsRepository {
   constructor(private readonly database: D1Database) {}
 
   async archiveEnvironment(input: ArchiveEnvironmentInput): Promise<EnvironmentRecord | null> {
-    return withTransaction(this.database, async () => {
-      const update = await this.database
-        .prepare(
-          `UPDATE environments
-           SET lifecycle_state = 'archived', archived_at = ?, updated_at = ?
-           WHERE id = ? AND organization_id = ? AND archived_at IS NULL`
-        )
-        .bind(input.archivedAt, input.archivedAt, input.environmentId, input.organizationId)
-        .run();
+    const update = await this.database
+      .prepare(
+        `UPDATE environments
+         SET lifecycle_state = 'archived', archived_at = ?, updated_at = ?
+         WHERE id = ? AND organization_id = ? AND archived_at IS NULL`
+      )
+      .bind(input.archivedAt, input.archivedAt, input.environmentId, input.organizationId)
+      .run();
 
-      if (getChanges(update) === 0) {
-        return null;
-      }
+    if (getChanges(update) === 0) {
+      return null;
+    }
 
-      await appendEvents(this.database, [input.event]);
+    await appendEvents(this.database, [input.event]);
 
-      return this.findEnvironmentById(input.organizationId, input.environmentId);
-    });
+    return this.findEnvironmentById(input.organizationId, input.environmentId);
   }
 
   async archiveProject(input: ArchiveProjectInput): Promise<ProjectRecord | null> {
-    return withTransaction(this.database, async () => {
-      const update = await this.database
-        .prepare(
-          `UPDATE projects
-           SET archived_at = ?, updated_at = ?
-           WHERE id = ? AND organization_id = ? AND archived_at IS NULL`
-        )
-        .bind(input.archivedAt, input.archivedAt, input.projectId, input.organizationId)
-        .run();
+    const update = await this.database
+      .prepare(
+        `UPDATE projects
+         SET archived_at = ?, updated_at = ?
+         WHERE id = ? AND organization_id = ? AND archived_at IS NULL`
+      )
+      .bind(input.archivedAt, input.archivedAt, input.projectId, input.organizationId)
+      .run();
 
-      if (getChanges(update) === 0) {
-        return null;
-      }
+    if (getChanges(update) === 0) {
+      return null;
+    }
 
-      await this.database
-        .prepare(
-          `UPDATE environments
-           SET lifecycle_state = 'archived', archived_at = ?, updated_at = ?
-           WHERE project_id = ? AND archived_at IS NULL`
-        )
-        .bind(input.environmentArchivedAt, input.environmentArchivedAt, input.projectId)
-        .run();
+    await this.database
+      .prepare(
+        `UPDATE environments
+         SET lifecycle_state = 'archived', archived_at = ?, updated_at = ?
+         WHERE project_id = ? AND archived_at IS NULL`
+      )
+      .bind(input.environmentArchivedAt, input.environmentArchivedAt, input.projectId)
+      .run();
 
-      await appendEvents(this.database, input.events);
+    await appendEvents(this.database, input.events);
 
-      return this.findProjectById(input.organizationId, input.projectId);
-    });
+    return this.findProjectById(input.organizationId, input.projectId);
   }
 
   async createEnvironment(input: CreateEnvironmentInput): Promise<void> {
-    await withTransaction(this.database, async () => {
-      await this.database
+    await runBatch(this.database, [
+      this.database
         .prepare(
           `INSERT INTO environments (
              id, organization_id, project_id, name, slug, lifecycle_state, created_at, updated_at, archived_at
@@ -106,16 +102,14 @@ export class D1ProjectsRepository implements ProjectsRepository {
           input.environment.createdAt,
           input.environment.updatedAt,
           input.environment.archivedAt
-        )
-        .run();
-
-      await appendEvents(this.database, [input.event]);
-    });
+        ),
+      ...createEventStatements(this.database, [input.event])
+    ]);
   }
 
   async createProjectWithEnvironments(input: CreateProjectWithEnvironmentsInput): Promise<void> {
-    await withTransaction(this.database, async () => {
-      await this.database
+    const statements: D1PreparedStatement[] = [
+      this.database
         .prepare(
           `INSERT INTO projects (
              id, organization_id, name, slug, created_at, updated_at, archived_at
@@ -130,10 +124,11 @@ export class D1ProjectsRepository implements ProjectsRepository {
           input.project.updatedAt,
           input.project.archivedAt
         )
-        .run();
+    ];
 
-      for (const environment of input.environments) {
-        await this.database
+    for (const environment of input.environments) {
+      statements.push(
+        this.database
           .prepare(
             `INSERT INTO environments (
                id, organization_id, project_id, name, slug, lifecycle_state, created_at, updated_at, archived_at
@@ -150,11 +145,11 @@ export class D1ProjectsRepository implements ProjectsRepository {
             environment.updatedAt,
             environment.archivedAt
           )
-          .run();
-      }
+      );
+    }
 
-      await appendEvents(this.database, input.events);
-    });
+    statements.push(...createEventStatements(this.database, input.events));
+    await runBatch(this.database, statements);
   }
 
   async findEnvironmentById(organizationId: string, environmentId: string): Promise<EnvironmentRecord | null> {
@@ -238,58 +233,74 @@ export class D1ProjectsRepository implements ProjectsRepository {
   }
 
   async updateEnvironment(input: UpdateEnvironmentInput): Promise<EnvironmentRecord | null> {
-    return withTransaction(this.database, async () => {
-      const update = await this.database
-        .prepare(
-          `UPDATE environments
-           SET name = ?, slug = ?, updated_at = ?
-           WHERE id = ? AND organization_id = ? AND project_id = ? AND archived_at IS NULL`
-        )
-        .bind(input.name, input.slug, input.updatedAt, input.environmentId, input.organizationId, input.projectId)
-        .run();
+    const update = await this.database
+      .prepare(
+        `UPDATE environments
+         SET name = ?, slug = ?, updated_at = ?
+         WHERE id = ? AND organization_id = ? AND project_id = ? AND archived_at IS NULL`
+      )
+      .bind(input.name, input.slug, input.updatedAt, input.environmentId, input.organizationId, input.projectId)
+      .run();
 
-      if (getChanges(update) === 0) {
-        return null;
-      }
+    if (getChanges(update) === 0) {
+      return null;
+    }
 
-      await appendEvents(this.database, [input.event]);
+    await appendEvents(this.database, [input.event]);
 
-      return this.findEnvironmentById(input.organizationId, input.environmentId);
-    });
+    return this.findEnvironmentById(input.organizationId, input.environmentId);
   }
 
   async updateProject(input: UpdateProjectInput): Promise<ProjectRecord | null> {
-    return withTransaction(this.database, async () => {
-      const update = await this.database
-        .prepare(
-          `UPDATE projects
-           SET name = ?, slug = ?, updated_at = ?
-           WHERE id = ? AND organization_id = ? AND archived_at IS NULL`
-        )
-        .bind(input.name, input.slug, input.updatedAt, input.projectId, input.organizationId)
-        .run();
+    const update = await this.database
+      .prepare(
+        `UPDATE projects
+         SET name = ?, slug = ?, updated_at = ?
+         WHERE id = ? AND organization_id = ? AND archived_at IS NULL`
+      )
+      .bind(input.name, input.slug, input.updatedAt, input.projectId, input.organizationId)
+      .run();
 
-      if (getChanges(update) === 0) {
-        return null;
-      }
+    if (getChanges(update) === 0) {
+      return null;
+    }
 
-      await appendEvents(this.database, [input.event]);
+    await appendEvents(this.database, [input.event]);
 
-      return this.findProjectById(input.organizationId, input.projectId);
-    });
+    return this.findProjectById(input.organizationId, input.projectId);
   }
 }
 
-async function appendEvents(database: D1Database, events: readonly SourceplaneEventEnvelope[]): Promise<void> {
-  for (const event of events) {
-    await database
+function createEventStatements(database: D1Database, events: readonly SourceplaneEventEnvelope[]): D1PreparedStatement[] {
+  return events.map((event) =>
+    database
       .prepare(
         `INSERT INTO projects_event_outbox (id, event_type, envelope_json, occurred_at)
          VALUES (?, ?, ?, ?)`
       )
       .bind(event.id, event.type, JSON.stringify(event), event.occurredAt)
-      .run();
+  );
+}
+
+async function appendEvents(database: D1Database, events: readonly SourceplaneEventEnvelope[]): Promise<void> {
+  for (const statement of createEventStatements(database, events)) {
+    await statement.run();
   }
+}
+
+async function runBatch(database: D1Database, statements: readonly D1PreparedStatement[]): Promise<unknown[]> {
+  const batch = Reflect.get(database, "batch");
+
+  if (typeof batch === "function") {
+    return await batch.call(database, [...statements]);
+  }
+
+  const results: unknown[] = [];
+  for (const statement of statements) {
+    results.push(await statement.run());
+  }
+
+  return results;
 }
 
 function getChanges(result: unknown): number {
@@ -338,23 +349,4 @@ function mapEnvironmentRow(row: EnvironmentRow): EnvironmentRecord {
     slug: row.slug,
     updatedAt: row.updated_at
   };
-}
-
-async function withTransaction<T>(database: D1Database, callback: () => Promise<T>): Promise<T> {
-  await database.exec("BEGIN IMMEDIATE");
-
-  try {
-    const result = await callback();
-    await database.exec("COMMIT");
-
-    return result;
-  } catch (error) {
-    try {
-      await database.exec("ROLLBACK");
-    } catch {
-      // Ignore rollback failures so the original error is preserved.
-    }
-
-    throw error;
-  }
 }

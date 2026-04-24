@@ -73,8 +73,8 @@ export class D1MembershipRepository implements MembershipRepository {
   constructor(private readonly database: D1Database) {}
 
   async acceptInvite(input: AcceptInviteInput): Promise<{ invite: InviteRecord | null; membership: MembershipRecord | null }> {
-    const accepted = await withTransaction(this.database, async () => {
-      const inviteResult = await this.database
+    const statements = [
+      this.database
         .prepare(
           `UPDATE organization_invites
            SET accepted_at = ?, accepted_by_user_id = ?, is_active = 0
@@ -85,14 +85,11 @@ export class D1MembershipRepository implements MembershipRepository {
              AND expires_at > ?`
         )
         .bind(input.acceptedAt, input.acceptedByUserId, input.inviteId, input.acceptedAt)
-        .run();
+    ];
 
-      if (getChanges(inviteResult) === 0) {
-        return false;
-      }
-
-      if (input.membership) {
-        await this.database
+    if (input.membership) {
+      statements.push(
+        this.database
           .prepare(
             `INSERT OR IGNORE INTO memberships (
                id,
@@ -109,11 +106,12 @@ export class D1MembershipRepository implements MembershipRepository {
             input.membership.createdAt,
             input.membership.updatedAt
           )
-          .run();
-      }
+      );
+    }
 
-      if (input.roleAssignment) {
-        await this.database
+    if (input.roleAssignment) {
+      statements.push(
+        this.database
           .prepare(
             `INSERT OR IGNORE INTO role_assignments (
                id,
@@ -144,13 +142,13 @@ export class D1MembershipRepository implements MembershipRepository {
             input.roleAssignment.createdAt,
             input.roleAssignment.updatedAt
           )
-          .run();
-      }
+      );
+    }
 
-      await appendEvents(this.database, input.events);
+    statements.push(...createEventStatements(this.database, input.events));
 
-      return true;
-    });
+    const [inviteResult] = await runBatch(this.database, statements);
+    const accepted = getChanges(inviteResult) > 0;
 
     if (!accepted) {
       return {
@@ -182,10 +180,20 @@ export class D1MembershipRepository implements MembershipRepository {
   }
 
   async createInvite(input: CreateInviteInput): Promise<void> {
-    await withTransaction(this.database, async () => {
-      await this.deactivateExpiredInvitesForEmail(input.invite.organizationId, input.invite.normalizedEmail, input.currentTime);
-
-      await this.database
+    await runBatch(this.database, [
+      this.database
+        .prepare(
+          `UPDATE organization_invites
+           SET is_active = 0
+           WHERE organization_id = ?
+             AND normalized_email = ?
+             AND is_active = 1
+             AND accepted_at IS NULL
+             AND revoked_at IS NULL
+             AND expires_at <= ?`
+        )
+        .bind(input.invite.organizationId, input.invite.normalizedEmail, input.currentTime),
+      this.database
         .prepare(
           `INSERT INTO organization_invites (
              id,
@@ -214,16 +222,14 @@ export class D1MembershipRepository implements MembershipRepository {
           input.invite.createdAt,
           input.invite.expiresAt,
           input.invite.createdByUserId
-        )
-        .run();
-
-      await appendEvents(this.database, [input.event]);
-    });
+        ),
+      ...createEventStatements(this.database, [input.event])
+    ]);
   }
 
   async createOrganizationWithOwner(input: CreateOrganizationWithOwnerInput): Promise<void> {
-    await withTransaction(this.database, async () => {
-      await this.database
+    await runBatch(this.database, [
+      this.database
         .prepare(
           `INSERT INTO organizations (
              id,
@@ -239,10 +245,8 @@ export class D1MembershipRepository implements MembershipRepository {
           input.organization.name,
           input.organization.createdAt,
           input.organization.updatedAt
-        )
-        .run();
-
-      await this.database
+        ),
+      this.database
         .prepare(
           `INSERT INTO memberships (
              id,
@@ -258,10 +262,8 @@ export class D1MembershipRepository implements MembershipRepository {
           input.membership.userId,
           input.membership.createdAt,
           input.membership.updatedAt
-        )
-        .run();
-
-      await this.database
+        ),
+      this.database
         .prepare(
           `INSERT INTO role_assignments (
              id,
@@ -291,11 +293,9 @@ export class D1MembershipRepository implements MembershipRepository {
           input.roleAssignment.role,
           input.roleAssignment.createdAt,
           input.roleAssignment.updatedAt
-        )
-        .run();
-
-      await appendEvents(this.database, input.events);
-    });
+        ),
+      ...createEventStatements(this.database, input.events)
+    ]);
   }
 
   async deactivateExpiredInvitesForEmail(organizationId: string, normalizedEmail: string, currentTime: string): Promise<void> {
@@ -513,82 +513,76 @@ export class D1MembershipRepository implements MembershipRepository {
   }
 
   async removeMembership(input: RemoveMembershipInput): Promise<boolean> {
-    return withTransaction(this.database, async () => {
-      await this.database
-        .prepare(
-          `DELETE FROM role_assignments
-           WHERE membership_id = ? AND organization_id = ?`
-        )
-        .bind(input.memberId, input.organizationId)
-        .run();
+    await this.database
+      .prepare(
+        `DELETE FROM role_assignments
+         WHERE membership_id = ? AND organization_id = ?`
+      )
+      .bind(input.memberId, input.organizationId)
+      .run();
 
-      const removedMembership = await this.database
-        .prepare(
-          `DELETE FROM memberships
-           WHERE id = ? AND organization_id = ?`
-        )
-        .bind(input.memberId, input.organizationId)
-        .run();
+    const removedMembership = await this.database
+      .prepare(
+        `DELETE FROM memberships
+         WHERE id = ? AND organization_id = ?`
+      )
+      .bind(input.memberId, input.organizationId)
+      .run();
 
-      if (getChanges(removedMembership) === 0) {
-        return false;
-      }
+    if (getChanges(removedMembership) === 0) {
+      return false;
+    }
 
-      await appendEvents(this.database, [input.event]);
+    await appendEvents(this.database, [input.event]);
 
-      return true;
-    });
+    return true;
   }
 
   async updateMembershipRole(input: UpdateMembershipRoleInput): Promise<MembershipRecord | null> {
-    return withTransaction(this.database, async () => {
-      const updatedRole = await this.database
-        .prepare(
-          `UPDATE role_assignments
-           SET role_name = ?, updated_at = ?
-           WHERE membership_id = ? AND organization_id = ? AND scope_kind = 'organization'`
-        )
-        .bind(input.role, input.updatedAt, input.memberId, input.organizationId)
-        .run();
+    const updatedRole = await this.database
+      .prepare(
+        `UPDATE role_assignments
+         SET role_name = ?, updated_at = ?
+         WHERE membership_id = ? AND organization_id = ? AND scope_kind = 'organization'`
+      )
+      .bind(input.role, input.updatedAt, input.memberId, input.organizationId)
+      .run();
 
-      if (getChanges(updatedRole) === 0) {
-        return null;
-      }
+    if (getChanges(updatedRole) === 0) {
+      return null;
+    }
 
-      await this.database
-        .prepare(
-          `UPDATE memberships
-           SET updated_at = ?
-           WHERE id = ? AND organization_id = ?`
-        )
-        .bind(input.updatedAt, input.memberId, input.organizationId)
-        .run();
+    await this.database
+      .prepare(
+        `UPDATE memberships
+         SET updated_at = ?
+         WHERE id = ? AND organization_id = ?`
+      )
+      .bind(input.updatedAt, input.memberId, input.organizationId)
+      .run();
 
-      await appendEvents(this.database, [input.event]);
+    await appendEvents(this.database, [input.event]);
 
-      return this.findMembershipById(input.organizationId, input.memberId);
-    });
+    return this.findMembershipById(input.organizationId, input.memberId);
   }
 
   async updateOrganization(input: UpdateOrganizationInput): Promise<OrganizationRecord | null> {
-    return withTransaction(this.database, async () => {
-      const updatedOrganization = await this.database
-        .prepare(
-          `UPDATE organizations
-           SET name = ?, slug = ?, updated_at = ?
-           WHERE id = ?`
-        )
-        .bind(input.name, input.slug, input.updatedAt, input.organizationId)
-        .run();
+    const updatedOrganization = await this.database
+      .prepare(
+        `UPDATE organizations
+         SET name = ?, slug = ?, updated_at = ?
+         WHERE id = ?`
+      )
+      .bind(input.name, input.slug, input.updatedAt, input.organizationId)
+      .run();
 
-      if (getChanges(updatedOrganization) === 0) {
-        return null;
-      }
+    if (getChanges(updatedOrganization) === 0) {
+      return null;
+    }
 
-      await appendEvents(this.database, [input.event]);
+    await appendEvents(this.database, [input.event]);
 
-      return this.findOrganizationById(input.organizationId);
-    });
+    return this.findOrganizationById(input.organizationId);
   }
 
   private async readMembership(query: string, bindings: readonly unknown[]): Promise<MembershipRecord | null> {
@@ -604,15 +598,35 @@ export class D1MembershipRepository implements MembershipRepository {
   }
 }
 
-async function appendEvents(database: D1Database, events: readonly SourceplaneEventEnvelope[]): Promise<void> {
-  for (const event of events) {
-    await database
+function createEventStatements(database: D1Database, events: readonly SourceplaneEventEnvelope[]): D1PreparedStatement[] {
+  return events.map((event) =>
+    database
       .prepare(
         `INSERT INTO membership_event_outbox (id, event_type, envelope_json, occurred_at)
          VALUES (?, ?, ?, ?)`
       )
       .bind(event.id, event.type, JSON.stringify(event), event.occurredAt)
-      .run();
+  );
+}
+
+async function runBatch(database: D1Database, statements: readonly D1PreparedStatement[]): Promise<unknown[]> {
+  const batch = Reflect.get(database, "batch");
+
+  if (typeof batch === "function") {
+    return await batch.call(database, [...statements]);
+  }
+
+  const results: unknown[] = [];
+  for (const statement of statements) {
+    results.push(await statement.run());
+  }
+
+  return results;
+}
+
+async function appendEvents(database: D1Database, events: readonly SourceplaneEventEnvelope[]): Promise<void> {
+  for (const statement of createEventStatements(database, events)) {
+    await statement.run();
   }
 }
 
@@ -676,23 +690,4 @@ function mapOrganizationRow(row: OrganizationRow): OrganizationRecord {
     slug: row.slug,
     updatedAt: row.updated_at
   };
-}
-
-async function withTransaction<T>(database: D1Database, callback: () => Promise<T>): Promise<T> {
-  await database.exec("BEGIN IMMEDIATE");
-
-  try {
-    const result = await callback();
-    await database.exec("COMMIT");
-
-    return result;
-  } catch (error) {
-    try {
-      await database.exec("ROLLBACK");
-    } catch {
-      // Ignore rollback failures so the original error is preserved.
-    }
-
-    throw error;
-  }
 }
