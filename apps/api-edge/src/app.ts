@@ -74,7 +74,7 @@ export function createApiEdgeApp(options: ApiEdgeAppOptions = {}): ExportedHandl
 
         if (routeMatch) {
           const jsonBody = await parseJsonBody(request);
-          const tenant = extractTenantContext(url.pathname);
+          const tenant = extractTenantContext(url.pathname, request.headers);
           const auth = await resolveAuthContext(request, services.identity, {
             request,
             requestContext,

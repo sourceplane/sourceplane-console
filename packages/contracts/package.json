@@ -41,6 +41,10 @@
       "types": "./src/node.ts",
       "import": "./dist/node.js"
     },
+    "./projects": {
+      "types": "./src/projects/index.ts",
+      "import": "./dist/projects/index.js"
+    },
     "./resources": {
       "types": "./src/resources/index.ts",
       "import": "./dist/resources/index.js"

@@ -5,10 +5,13 @@ import { describe, expect, it } from "vitest";
 import {
   acceptOrganizationInviteResponseSchema,
   authorizationRequestSchema,
+  createEnvironmentResponseSchema,
   createOrganizationInviteResponseSchema,
   createOrganizationResponseSchema,
+  createProjectResponseSchema,
   createSuccessResponse,
   isApiErrorEnvelope,
+  listEnvironmentsResponseSchema,
   loginCompleteResponseSchema,
   loginStartResponseSchema,
   updateOrganizationResponseSchema,
@@ -19,6 +22,7 @@ import { createApiEdgeApp, type ApiEdgeEnv } from "@sourceplane/api-edge";
 import identityWorker, { type IdentityWorkerEnv } from "@sourceplane/identity-worker";
 import membershipWorker, { type MembershipWorkerEnv } from "@sourceplane/membership-worker";
 import policyWorker, { type PolicyWorkerEnv } from "@sourceplane/policy-worker";
+import projectsWorker, { type ProjectsWorkerEnv } from "@sourceplane/projects-worker";
 import { applyD1Migrations, createServiceBinding, createTestD1Database } from "@sourceplane/testing";
 
 import { MemoryIdempotencyStore } from "../src/testing/memory-idempotency-store.js";
@@ -32,6 +36,7 @@ const executionContext: ExecutionContext = {
 
 const identityMigrationsDirectory = resolve(import.meta.dirname, "..", "..", "identity-worker", "migrations");
 const membershipMigrationsDirectory = resolve(import.meta.dirname, "..", "..", "membership-worker", "migrations");
+const projectsMigrationsDirectory = resolve(import.meta.dirname, "..", "..", "projects-worker", "migrations");
 
 interface RouteInventoryData {
   groups: Array<{ clientKey: string; group: string; summary: string }>;
@@ -160,6 +165,22 @@ async function createMembershipWorkerTestHarness(
       IDENTITY: createServiceBinding((request) => identityWorker.fetch(request, identityEnv, executionContext)),
       MEMBERSHIP_DB: database.binding,
       MEMBERSHIP_TOKEN_HASH_SECRET: "membership-test-secret"
+    }
+  };
+}
+
+async function createProjectsWorkerTestHarness(): Promise<{ close(): void; env: ProjectsWorkerEnv }> {
+  const database = createTestD1Database();
+  await applyD1Migrations(database.binding, projectsMigrationsDirectory);
+
+  return {
+    close(): void {
+      database.close();
+    },
+    env: {
+      APP_NAME: "projects-worker",
+      ENVIRONMENT: "local",
+      PROJECTS_DB: database.binding
     }
   };
 }
@@ -1030,6 +1051,132 @@ describe("api-edge transport behavior", () => {
         reason: "deny.action_not_permitted"
       });
     } finally {
+      membershipHarness.close();
+      identityHarness.close();
+    }
+  });
+
+  it("allows an organization owner to create a project with environments through the real edge stack", async () => {
+    const identityHarness = await createIdentityWorkerTestHarness();
+    const membershipHarness = await createMembershipWorkerTestHarness(identityHarness.env);
+    const projectsHarness = await createProjectsWorkerTestHarness();
+    const worker = createApiEdgeApp({
+      idempotencyStore: new MemoryIdempotencyStore()
+    });
+
+    try {
+      const env: ApiEdgeEnv = {
+        APP_NAME: "api-edge",
+        ENVIRONMENT: "local",
+        IDENTITY: createServiceBinding((request) => identityWorker.fetch(request, identityHarness.env, executionContext)),
+        MEMBERSHIP: createServiceBinding((request) => membershipWorker.fetch(request, membershipHarness.env, executionContext)),
+        POLICY: createServiceBinding((request) => policyWorker.fetch(request, createPolicyWorkerTestEnv(), executionContext)),
+        PROJECTS: createServiceBinding((request) => projectsWorker.fetch(request, projectsHarness.env, executionContext))
+      };
+
+      const ownerSession = await createEdgeInteractiveSession(worker, env, "owner@example.com");
+      const viewerSession = await createEdgeInteractiveSession(worker, env, "viewer@example.com");
+
+      const createOrganizationResponse = await worker.fetch(
+        new Request("https://api.sourceplane.test/v1/organizations", {
+          body: JSON.stringify({ name: "Apollo Labs" }),
+          headers: {
+            authorization: `Bearer ${ownerSession.token}`,
+            "content-type": "application/json",
+            "Idempotency-Key": "idem_projects_org_create"
+          },
+          method: "POST"
+        }),
+        env,
+        executionContext
+      );
+      expect(createOrganizationResponse.status).toBe(200);
+      const createOrgPayload = assertApiSuccessEnvelope(await readJsonValue(createOrganizationResponse), isRecord);
+      const createdOrg = createOrganizationResponseSchema.parse(createOrgPayload.data);
+
+      const createProjectResponse = await worker.fetch(
+        new Request("https://api.sourceplane.test/v1/projects", {
+          body: JSON.stringify({ name: "Apollo API" }),
+          headers: {
+            authorization: `Bearer ${ownerSession.token}`,
+            "content-type": "application/json",
+            "Idempotency-Key": "idem_projects_project_create",
+            "x-sourceplane-org-id": createdOrg.organization.id
+          },
+          method: "POST"
+        }),
+        env,
+        executionContext
+      );
+
+      expect(createProjectResponse.status, await createProjectResponse.clone().text()).toBe(200);
+      const createProjectPayload = assertApiSuccessEnvelope(await readJsonValue(createProjectResponse), isRecord);
+      const createdProject = createProjectResponseSchema.parse(createProjectPayload.data);
+      expect(createdProject.project.organizationId).toBe(createdOrg.organization.id);
+      expect(createdProject.project.slug).toBe("apollo-api");
+      expect(createdProject.environments.map((e) => e.slug)).toEqual(["development"]);
+
+      const createStagingResponse = await worker.fetch(
+        new Request(
+          `https://api.sourceplane.test/v1/projects/${createdProject.project.id}/environments`,
+          {
+            body: JSON.stringify({ name: "Staging" }),
+            headers: {
+              authorization: `Bearer ${ownerSession.token}`,
+              "content-type": "application/json",
+              "Idempotency-Key": "idem_projects_env_create",
+              "x-sourceplane-org-id": createdOrg.organization.id
+            },
+            method: "POST"
+          }
+        ),
+        env,
+        executionContext
+      );
+
+      expect(createStagingResponse.status).toBe(200);
+      const createStagingPayload = assertApiSuccessEnvelope(await readJsonValue(createStagingResponse), isRecord);
+      const createdStaging = createEnvironmentResponseSchema.parse(createStagingPayload.data);
+      expect(createdStaging.environment.projectId).toBe(createdProject.project.id);
+      expect(createdStaging.environment.slug).toBe("staging");
+
+      const listEnvsResponse = await worker.fetch(
+        new Request(
+          `https://api.sourceplane.test/v1/projects/${createdProject.project.id}/environments`,
+          {
+            headers: {
+              authorization: `Bearer ${ownerSession.token}`,
+              "x-sourceplane-org-id": createdOrg.organization.id
+            }
+          }
+        ),
+        env,
+        executionContext
+      );
+      expect(listEnvsResponse.status).toBe(200);
+      const listEnvsPayload = assertApiSuccessEnvelope(await readJsonValue(listEnvsResponse), isRecord);
+      const listedEnvs = listEnvironmentsResponseSchema.parse(listEnvsPayload.data);
+      expect(listedEnvs.environments.map((e) => e.slug).sort()).toEqual(["development", "staging"]);
+
+      const viewerCreateResponse = await worker.fetch(
+        new Request("https://api.sourceplane.test/v1/projects", {
+          body: JSON.stringify({ name: "Forbidden Project" }),
+          headers: {
+            authorization: `Bearer ${viewerSession.token}`,
+            "content-type": "application/json",
+            "Idempotency-Key": "idem_projects_viewer_denied",
+            "x-sourceplane-org-id": createdOrg.organization.id
+          },
+          method: "POST"
+        }),
+        env,
+        executionContext
+      );
+
+      expect(viewerCreateResponse.status).toBe(403);
+      expect(isApiErrorEnvelope(await readJsonValue(viewerCreateResponse))).toBe(true);
+    } finally {
+      projectsHarness.close();
       membershipHarness.close();
       identityHarness.close();
     }
