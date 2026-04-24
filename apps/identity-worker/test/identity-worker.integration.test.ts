@@ -204,6 +204,37 @@ describe("identity-worker", () => {
     }
   });
 
+  it("uses a fallback token hash secret outside production when none is configured", async () => {
+    const harness = await createHarness({
+      AUTH_LOGIN_DELIVERY_MODE: "local_debug",
+      ENVIRONMENT: "preview",
+      IDENTITY_TOKEN_HASH_SECRET: undefined
+    });
+
+    try {
+      const loginStart = await callSuccessEnvelope(
+        identityWorker.fetch(
+          new Request("https://identity.sourceplane.test/internal/edge/v1/auth/login/start", {
+            body: JSON.stringify({
+              email: "preview-no-secret@example.com"
+            }),
+            headers: {
+              "content-type": "application/json"
+            },
+            method: "POST"
+          }),
+          harness.env,
+          executionContext
+        )
+      );
+
+      const loginStartData = loginStartResponseSchema.parse(loginStart.data);
+      expect(loginStartData.delivery.mode).toBe("local_debug");
+    } finally {
+      harness.close();
+    }
+  });
+
   it("returns a null actor for invalid and expired session credentials", async () => {
     const harness = await createHarness();
 
