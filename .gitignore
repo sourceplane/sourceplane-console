@@ -2,6 +2,7 @@
 .orun
 .env
 .env.*
+.workspace
 .pnpm-store
 .turbo
 .wrangler
