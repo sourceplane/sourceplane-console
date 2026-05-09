@@ -4,7 +4,7 @@ Status: Normative
 
 ## Intent
 
-This repository starts as a Cloudflare-first monorepo so implementation can move quickly with strong shared contracts, while preserving clean seams for later extraction into separate repos and deployments.
+This repository starts as a Cloudflare-first monorepo for a reusable multi-tenant SaaS starter bootstrap. It should let implementation move quickly across identity, organizations, projects, membership, billing, audit, usage, notifications, webhooks, admin/support, and optional product extensions while preserving clean seams for later extraction into separate repos and deployments.
 
 ## Canonical Repo Shape
 
@@ -25,21 +25,27 @@ kiox.yaml                  Orun runtime pin
     component.yaml
   /projects-worker
     component.yaml
-  /resources-worker
+  /notifications-worker
     component.yaml
+  /webhooks-worker
+    component.yaml
+  /admin-worker
+    component.yaml
+  /resources-worker
+    component.yaml         Optional starter extension for project-scoped resources
   /config-worker
     component.yaml
   /events-worker
     component.yaml
   /runtime-worker
-    component.yaml
+    component.yaml         Optional starter extension for long-running resource workflows
   /metering-worker
     component.yaml
   /billing-worker
     component.yaml
 
 /packages
-  /contracts               Shared API, event, resource, and manifest types
+  /contracts               Shared API, tenancy, event, starter, resource, and manifest types
     component.yaml         Component descriptor (type: turbo-package)
   /sdk                     Public TypeScript SDK
     component.yaml
@@ -79,7 +85,8 @@ kiox.yaml                  Orun runtime pin
 - The public entry point is `apps/api-edge`.
 - Internal bounded contexts are separate Workers where service bindings add value.
 - The web UI is a separate app and must talk to the public API, not internal Worker bindings.
-- Asynchronous orchestration lives in `apps/runtime-worker` using Cloudflare Workflows by default; Durable Objects may be used for locks and strongly consistent coordination.
+- Starter-domain asynchronous work uses Cloudflare Queues and Workers behind the owning bounded context.
+- Long-running product-resource orchestration may live in `apps/runtime-worker` using Cloudflare Workflows by default; Durable Objects may be used for locks and strongly consistent coordination.
 
 ### State ownership
 
@@ -88,6 +95,7 @@ kiox.yaml                  Orun runtime pin
 - In V1, a single Supabase project/database may host multiple bounded contexts, but each context must own a logical schema or table namespace, service credentials, and migrations that can be extracted without rewriting clients.
 - No Worker may query another domain's tables or schemas directly.
 - Shared caches in KV must be derived, disposable copies of source-of-truth data.
+- Every project-scoped table, cache key, event, and query must carry `org_id + project_id`; never rely on `project_id` alone.
 
 ### Internal communication
 
@@ -111,7 +119,7 @@ Use platform primitives deliberately:
 - Service bindings: internal synchronous calls
 - Supabase Postgres: source-of-truth relational state for bounded contexts
 - Hyperdrive: Worker-to-Postgres connectivity, pooling, and regional routing at the adapter layer
-- D1: optional edge-local cache, test adapter, or managed customer resource; not the source of truth for platform domain state
+- D1: optional edge-local cache, test adapter, or managed customer resource; not the source of truth for starter domain state
 - KV: read-heavy cache and idempotency records
 - R2: artifacts, manifest bundles, export files, dead-letter archives
 - Queues: asynchronous delivery and fanout steps
@@ -122,7 +130,7 @@ Use platform primitives deliberately:
 
 ## Primary Database Operating Model
 
-Supabase Postgres is the primary operational database for product-owned relational state, including identity, membership, projects, resources, config metadata, runtime metadata, canonical events, metering rollups, and billing state.
+Supabase Postgres is the primary operational database for product-owned relational state, including identity, membership, projects, config metadata, canonical events, audit indexes, usage rollups, billing state, notifications, webhooks, support actions, and optional resource/runtime metadata.
 
 - Workers connect to Supabase Postgres through Hyperdrive bindings. Raw connection strings and Supabase service keys must stay in platform configuration and must not leak into domain logic.
 - Repository adapters own SQL, pooling assumptions, transaction boundaries, and Hyperdrive-specific behavior. Domain services receive typed repositories or unit-of-work abstractions, not platform database clients.
@@ -180,4 +188,4 @@ Every change must pass the gates enforced by the matched stack-tectonic composit
 - contract tests
 - integration tests for the changed component
 
-Changes that affect `packages/contracts`, `specs/`, or shared auth/resource flows require downstream smoke tests for every impacted component.
+Changes that affect `packages/contracts`, `specs/`, or shared auth, tenancy, project, billing, audit, resource, or webhook flows require downstream smoke tests for every impacted component.

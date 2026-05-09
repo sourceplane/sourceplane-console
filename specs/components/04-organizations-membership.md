@@ -23,11 +23,12 @@ Platform dependencies:
 
 ## Intent
 
-Own the tenant boundary: organizations, memberships, invites, and role assignments.
+Own the SaaS tenant boundary: organizations, memberships, invitations, and role assignments. Organization is also the billing, audit, and ownership boundary consumed by billing, metering, audit, webhooks, notifications, and support workflows.
 
 ## Scope
 
 - create and update organizations
+- organization settings
 - list organizations for an actor
 - membership creation, update, and removal
 - invitation lifecycle
@@ -51,8 +52,10 @@ Own the tenant boundary: organizations, memberships, invites, and role assignmen
 - `createOrganization`
 - `getOrganization`
 - `listOrganizationsForSubject`
+- `updateOrganizationSettings`
 - `inviteMember`
 - `acceptInvite`
+- `revokeInvite`
 - `listMembers`
 - `updateMemberRole`
 - `removeMember`
@@ -76,6 +79,7 @@ This component owns:
 - memberships
 - invitations
 - role assignments
+- organization-level settings
 
 ## Agent Freedom
 
@@ -86,7 +90,9 @@ This component owns:
 ## Acceptance Criteria
 
 - A new signed-in user can create an organization.
+- The creator becomes an owner and the organization is usable as a billing/customer boundary.
 - Additional users can be invited and assigned roles.
+- Invitations can be accepted, revoked, and audited.
 - Membership changes become visible to policy evaluation through the published contract.
 - Organization data can be extracted later without rewriting identity.
 

@@ -1,6 +1,6 @@
 # @sourceplane/api-edge
 
-Public HTTP facade Worker for Sourceplane.
+Public HTTP facade Worker for the Sourceplane SaaS starter.
 
 This app owns transport concerns only:
 
@@ -38,6 +38,8 @@ The edge currently exposes:
 	- `/v1/billing/*`
 
 Every successful and error response is normalized through `@sourceplane/contracts`.
+
+The normative starter target route shape is defined in `specs/components/01-edge-api.md` and uses explicit organization-nested project paths. The current scaffold still carries the earlier flat route groups until the API implementation is migrated.
 
 ## Bindings
 

@@ -12,11 +12,12 @@ Primary monorepo targets:
 Primary dependencies:
 
 - `specs/constitution.md`
+- `specs/product-overview.md`
 - `specs/repo.md`
 
 ## Intent
 
-Bootstrap a production-grade Cloudflare monorepo that all later bounded contexts can safely build on without reworking the workspace layout.
+Bootstrap a production-grade Cloudflare monorepo that all later SaaS starter bounded contexts can safely build on without reworking the workspace layout.
 
 ## Scope
 
@@ -26,6 +27,7 @@ Bootstrap a production-grade Cloudflare monorepo that all later bounded contexts
 - linting, formatting, testing, and typechecking setup
 - Worker and Pages app scaffolds
 - shared environment typing
+- Supabase Postgres and Hyperdrive adapter conventions
 - local development scripts
 - CI pipeline skeleton
 - deployment pipeline skeleton

@@ -1,6 +1,6 @@
 # Sourceplane SaaS
 
-This repository now contains the Sourceplane monorepo scaffold and the original spec pack. The implementation remains spec-led: later tasks should treat the files under `specs/` as normative and add behavior without collapsing the extraction seams defined in the constitution.
+This repository contains the Sourceplane SaaS starter bootstrap scaffold and spec pack. The implementation remains spec-led: later tasks should treat the files under `specs/` as normative and add behavior without collapsing the extraction seams defined in the constitution.
 
 ## What Exists Today
 
@@ -60,18 +60,20 @@ shown in the UI there as well while the external email provider is still pending
 - `packages/`: shared contracts, SDK, CLI, UI, testing utilities, and generic helpers
 - `tooling/`: reusable lint, tsconfig, and repo scripts
 - `infra/`: Cloudflare environment notes and CI/deploy skeletons
-- `specs/`: constitutional, repo, contract, and component specs
+- `specs/`: SaaS starter product, domain, contract, and component specs
 
 ## Read Order
 
 1. `specs/constitution.md`
-2. `specs/repo.md`
-3. `specs/contracts/*`
-4. `specs/components/00-foundation-and-tooling.md`
-5. `specs/components/01-edge-api.md`
-6. `specs/components/12-web-console.md`
-7. `specs/components/13-cli-and-sdk.md`
-8. `specs/schedule.md`
+2. `specs/product-overview.md`
+3. `specs/domain-model.md`
+4. `specs/repo.md`
+5. `specs/contracts/*`
+6. `specs/components/00-foundation-and-tooling.md`
+7. `specs/components/01-edge-api.md`
+8. `specs/components/12-web-console.md`
+9. `specs/components/13-cli-and-sdk.md`
+10. `specs/schedule.md`
 
 ## Current Assumptions
 

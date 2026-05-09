@@ -1,6 +1,6 @@
 # Resources And Component Registry
 
-Status: Ready for implementation
+Status: Optional starter extension
 
 Primary monorepo targets:
 
@@ -23,7 +23,7 @@ Platform dependencies:
 
 ## Intent
 
-Provide the core control-plane abstraction: resources backed by versioned component definitions.
+Provide an optional project-resource extension: resources backed by versioned component definitions. This is useful for SaaS products that need manifest-driven provisioning, but it is not required for the core starter bootstrap of auth, orgs, projects, membership, billing, audit, usage, webhooks, notifications, and admin/support.
 
 ## Scope
 
@@ -33,12 +33,14 @@ Provide the core control-plane abstraction: resources backed by versioned compon
 - resource CRUD
 - resource relationship graph
 - resource desired state updates
+- starter extension catalog entries
 
 ## Out Of Scope
 
 - executing deployment steps
 - long-running orchestration
 - billing calculations
+- blocking the baseline SaaS starter flows on resource support
 
 ## Hard Contracts To Honor
 
@@ -94,6 +96,7 @@ This component owns:
 
 - A component definition can be published and later resolved by version.
 - A resource can be created under a project and environment using a valid component definition.
+- Every resource operation carries `orgId + projectId` and, where applicable, `environmentId`.
 - Runtime orchestration can consume resource and manifest data without private table access.
 
 ## Extraction Seam

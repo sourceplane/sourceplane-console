@@ -23,7 +23,7 @@ Platform dependencies:
 
 ## Intent
 
-Own usage ingestion, normalization, aggregation, and quota state. Billing consumes metering outputs; metering does not depend on billing rules.
+Own usage ingestion, normalization, aggregation, quota state, and usage summaries for the SaaS starter. Billing consumes metering outputs; metering does not depend on billing rules.
 
 ## Scope
 
@@ -31,6 +31,7 @@ Own usage ingestion, normalization, aggregation, and quota state. Billing consum
 - idempotent event processing
 - hourly and daily rollups
 - quota calculations
+- entitlement and quota input facts for policy
 - usage summary queries
 
 ## Out Of Scope
@@ -64,7 +65,8 @@ Own usage ingestion, normalization, aggregation, and quota state. Billing consum
 
 - Usage ingestion must support idempotency keys.
 - Raw usage and aggregated usage must be distinguishable.
-- Summaries must be queryable by organization, project, environment, and resource where applicable.
+- Summaries must be queryable by organization, project, environment, and optional resource where applicable.
+- Organization-level billing ledgers must not depend on project-level resource orchestration being enabled.
 
 ## Data Ownership
 
@@ -85,7 +87,7 @@ This component owns:
 
 - Usage can be recorded exactly once for a given idempotency key.
 - Aggregated summaries are stable enough for product usage views and billing consumption.
-- Quota checks can be reused by edge and runtime flows.
+- Quota checks can be reused by edge, project, webhook, billing, and optional runtime flows.
 
 ## Extraction Seam
 

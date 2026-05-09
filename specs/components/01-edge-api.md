@@ -22,7 +22,7 @@ Cloudflare primitives:
 
 ## Intent
 
-Provide the single public HTTP entry point for the platform. The edge Worker is responsible for transport concerns and request context, not source-of-truth business logic.
+Provide the single public HTTP entry point for the SaaS starter. The edge Worker is responsible for transport concerns, request context, tenant scope, and starter route composition, not source-of-truth business logic.
 
 ## Scope
 
@@ -53,15 +53,21 @@ The edge must expose and route at least these route groups:
 
 - `/v1/auth/*`
 - `/v1/organizations/*`
-- `/v1/projects/*`
-- `/v1/environments/*`
-- `/v1/resources/*`
-- `/v1/components/*`
-- `/v1/config/*`
-- `/v1/deployments/*`
-- `/v1/audit/*`
-- `/v1/usage/*`
-- `/v1/billing/*`
+- `/v1/organizations/{orgId}/members/*`
+- `/v1/organizations/{orgId}/invites/*`
+- `/v1/organizations/{orgId}/projects/*`
+- `/v1/organizations/{orgId}/projects/{projectId}/environments/*`
+- `/v1/organizations/{orgId}/projects/{projectId}/config/*`
+- `/v1/organizations/{orgId}/projects/{projectId}/api-keys/*`
+- `/v1/organizations/{orgId}/projects/{projectId}/webhooks/*`
+- `/v1/organizations/{orgId}/audit/*`
+- `/v1/organizations/{orgId}/usage/*`
+- `/v1/organizations/{orgId}/billing/*`
+- `/v1/organizations/{orgId}/notifications/*`
+- `/v1/admin/*` when support/admin surfaces are enabled
+- optional `/v1/organizations/{orgId}/projects/{projectId}/components/*`
+- optional `/v1/organizations/{orgId}/projects/{projectId}/resources/*`
+- optional `/v1/organizations/{orgId}/projects/{projectId}/deployments/*`
 
 ### Internal Calls
 
@@ -71,17 +77,20 @@ The edge must integrate with internal Workers for:
 - policy
 - membership
 - projects
-- resources
 - config
-- runtime
 - events or audit query surface
 - metering summary
 - billing summary
+- notifications
+- webhooks
+- admin/support when enabled
+- resources and runtime when optional product-resource extensions are enabled
 
 ### Security And Traceability
 
 - Resolve the acting subject before invoking mutating domain commands.
 - Attach request ID and tenant context to downstream calls.
+- Reject project-scoped requests that do not carry both organization and project scope.
 - Preserve `Idempotency-Key`, correlation ID, and trace headers.
 
 ## Data Ownership

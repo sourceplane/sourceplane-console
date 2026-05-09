@@ -22,7 +22,7 @@ Platform dependencies:
 
 ## Intent
 
-Provide the platform event backbone, the audit trail, and the minimum observability primitives needed by all other components.
+Provide the starter event backbone, immutable audit trail, security-event history, and minimum observability primitives needed by all other components.
 
 ## Scope
 
@@ -30,6 +30,7 @@ Provide the platform event backbone, the audit trail, and the minimum observabil
 - fan out events to subscribers
 - record audit entries
 - expose audit query APIs
+- expose security-event query APIs
 - write operational analytics and counters
 - dead-letter handling for failed async deliveries
 
@@ -50,7 +51,22 @@ Provide the platform event backbone, the audit trail, and the minimum observabil
 - `publishEvent`
 - `recordAudit`
 - `queryAudit`
+- `querySecurityEvents`
 - `registerSubscriber` or static subscriber configuration
+
+### Required Audit Coverage
+
+At minimum, audit entries are required for:
+
+- login and session security events
+- organization creation, update, archival, and deletion
+- member invitation, acceptance, removal, and role changes
+- project creation, update, archival, and deletion
+- API-key and service-principal creation, update, and revocation
+- webhook endpoint changes and delivery disabling
+- billing customer, subscription, invoice, and entitlement changes
+- config, secret metadata, and feature-flag changes
+- support/admin actions and impersonation when enabled
 
 ### Architectural Rule
 
@@ -89,6 +105,7 @@ This component owns:
 
 - Every mutating domain action can publish a shared event envelope.
 - Audit history is queryable by organization and target resource.
+- Security events are queryable by organization, user, and target where applicable.
 - Failed async deliveries are visible and retryable without mutating the original source data.
 
 ## Extraction Seam

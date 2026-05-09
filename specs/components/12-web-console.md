@@ -10,10 +10,11 @@ Primary monorepo targets:
 Primary dependencies:
 
 - `specs/contracts/api-guidelines.md`
-- `specs/contracts/component-manifest.schema.yaml`
+- `specs/product-overview.md`
+- optional `specs/contracts/component-manifest.schema.yaml`
 - `specs/components/01-edge-api.md`
-- `specs/components/06-resources-and-component-registry.md`
-- `specs/components/08-runtime-orchestration.md`
+- `specs/components/04-organizations-membership.md`
+- `specs/components/05-projects-environments.md`
 
 Cloudflare primitives:
 
@@ -22,18 +23,23 @@ Cloudflare primitives:
 
 ## Intent
 
-Provide the operator-facing control plane UI for humans without creating a second, UI-only system contract.
+Provide the usable SaaS starter console for humans without creating a second, UI-only system contract. The first screen after auth should be the working app surface, not a marketing page.
 
 ## Scope
 
 - sign-in and session flows
 - organization and project switching
+- organization settings, members, and invitations
 - project and environment management
-- component catalog browsing
-- resource creation and status views
+- account, API-key, and security settings
 - config and secret metadata management
 - audit and usage views
 - billing summary views
+- notification preferences
+- webhook configuration and delivery status
+- admin/support workflows where enabled
+- optional component catalog browsing
+- optional resource creation and status views
 
 ## Out Of Scope
 
@@ -51,18 +57,25 @@ Provide the operator-facing control plane UI for humans without creating a secon
 ### UX Principles
 
 - Generate or strongly assist input forms from component manifests where practical.
-- Reflect resource `status.phase` and deployment history clearly.
+- Reflect optional resource `status.phase` and deployment history clearly when resource extensions are enabled.
 - Keep organization, project, and environment scope visible at all times.
 
 ### Required Flows
 
 - sign in
 - create organization
+- invite and remove members
+- accept invitation
 - create project
 - create environment
-- create resource from a component definition
-- view deployment status
+- manage account, API keys, and security settings
+- manage project config and secrets metadata
 - inspect audit history
+- review usage and quota state
+- review billing summary, subscription state, and invoices
+- configure webhooks and notification preferences
+- optionally create resources from component definitions
+- optionally view deployment status
 
 ## Agent Freedom
 
@@ -72,9 +85,9 @@ Provide the operator-facing control plane UI for humans without creating a secon
 
 ## Acceptance Criteria
 
-- A non-CLI user can complete the baseline control-plane flow without hidden admin endpoints.
+- A non-CLI user can complete the baseline SaaS starter flow without hidden admin endpoints.
 - The UI does not invent fields or workflows that are absent from the public API contracts.
-- Resource configuration inputs come from manifest definitions, not hardcoded per-component forms where avoidable.
+- Optional resource configuration inputs come from manifest definitions, not hardcoded per-component forms where avoidable.
 
 ## Extraction Seam
 
