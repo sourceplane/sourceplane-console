@@ -2,17 +2,27 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
+import { isAllowedEnvironment, readOptionValue, resolveDeployEnvironment } from "./resolve-deploy-environment.mjs";
+
 const rawArgs = process.argv.slice(2);
 const args = rawArgs[0] === "--" ? rawArgs.slice(1) : rawArgs;
-const targetEnvironment = readOptionValue(args, ["--env", "-e"]);
-const allowedEnvironments = new Set(["preview", "production"]);
+const { environment: targetEnvironment, source: environmentSource } = resolveDeployEnvironment({
+  args,
+  env: process.env
+});
 const wranglerCommand = process.env.WRANGLER_BINARY ?? (process.platform === "win32" ? "wrangler.cmd" : "wrangler");
 
-if (!targetEnvironment || !allowedEnvironments.has(targetEnvironment)) {
+if (!isAllowedEnvironment(targetEnvironment)) {
   process.stderr.write(
     "Deploy commands require an explicit --env preview|production argument. Use the app dev commands for local work.\n"
   );
   process.exit(1);
+}
+
+if (environmentSource !== "cli") {
+  process.stderr.write(
+    `Deploy environment inferred as '${targetEnvironment}' from ${environmentSource}. Pass --env ${targetEnvironment} explicitly to silence this notice.\n`
+  );
 }
 
 const preparedConfig = prepareDeployConfig({
@@ -291,16 +301,6 @@ function replaceConfigArgument(args, configFilePath) {
   }
 
   return nextArgs;
-}
-
-function readOptionValue(args, names) {
-  for (let index = 0; index < args.length; index += 1) {
-    if (names.includes(args[index])) {
-      return args[index + 1];
-    }
-  }
-
-  return undefined;
 }
 
 function needsResolvedDatabaseId(binding) {
