@@ -59,4 +59,4 @@ No spec changes are required. The implementation is fully conservative with resp
 
 ## PR Number
 
-_To be filled in after the PR is opened._
+#31 — https://github.com/sourceplane/sourceplane-console/pull/31
