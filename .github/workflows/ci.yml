@@ -3,38 +3,73 @@ name: CI
 on:
   pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: read
+  id-token: write   # orun remote-state OIDC authentication
+
+env:
+  GITHUB_TOKEN: ${{ github.token }}
+  ORUN_BACKEND_URL: https://orun-api.sourceplane.ai
 
 jobs:
-  quality:
+  plan:
+    name: Orun Plan
     runs-on: ubuntu-latest
+    outputs:
+      job-matrix: ${{ steps.plan.outputs.job-matrix }}
+      plan-checksum: ${{ steps.plan.outputs.plan-checksum }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v4
         with:
-          version: 10.7.1
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+          fetch-depth: 0
+      - uses: sourceplane/orun-action@v1.1.0
+      - name: Plan with Orun
+        id: plan
+        run: |
+          orun plan \
+            --changed \
+            --output plan.json
+          echo "plan-checksum=$(jq -r '.metadata.checksum | ltrimstr("sha256-") | .[0:12]' plan.json)" >> $GITHUB_OUTPUT
+          echo "job-matrix=$(jq -c '[.jobs[] | {"job-id": .id, "job-name": .checkName}]' plan.json)" >> $GITHUB_OUTPUT
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
         with:
-          cache: pnpm
-          node-version: 22
+          name: orun-plan
+          path: plan.json
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Unit tests
-        run: pnpm test
-
-      - name: Contract tests
-        run: pnpm contract:test
+  execute:
+    name: ${{ matrix.job-name }}
+    needs: plan
+    if: needs.plan.outputs.job-matrix != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        include: ${{ fromJson(needs.plan.outputs.job-matrix) }}
+    concurrency:
+      group: orun-${{ github.ref }}-${{ matrix.job-id }}
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: orun-plan
+      - uses: sourceplane/orun-action@v1.1.0
+      - name: run job steps
+        run: |
+          orun run \
+            --plan plan.json \
+            --runner github-actions \
+            --remote-state \
+            --job "${{ matrix.job-id }}" \
+            --exec-id "${{ github.run_id }}-${{ github.run_attempt }}"

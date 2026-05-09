@@ -9,27 +9,48 @@ This repository starts as a Cloudflare-first monorepo so implementation can move
 ## Canonical Repo Shape
 
 ```text
+intent.yaml                Orun intent — composition sources, discovery roots, environment lanes
+kiox.yaml                  Orun runtime pin
+
 /apps
   /api-edge                Public HTTP entry Worker
+    component.yaml         Component descriptor (type: cloudflare-worker-turbo)
   /web-console             Cloudflare Pages or Workers-based UI
+    component.yaml         Component descriptor (type: cloudflare-pages-turbo)
   /identity-worker
+    component.yaml
   /policy-worker
+    component.yaml
   /membership-worker
+    component.yaml
   /projects-worker
+    component.yaml
   /resources-worker
+    component.yaml
   /config-worker
+    component.yaml
   /events-worker
+    component.yaml
   /runtime-worker
+    component.yaml
   /metering-worker
+    component.yaml
   /billing-worker
+    component.yaml
 
 /packages
   /contracts               Shared API, event, resource, and manifest types
+    component.yaml         Component descriptor (type: turbo-package)
   /sdk                     Public TypeScript SDK
+    component.yaml
   /cli                     Public CLI package
+    component.yaml
   /ui                      Shared UI components and generated form helpers
+    component.yaml
   /shared                  Generic helpers only: errors, logging, ids, tracing
+    component.yaml
   /testing                 Test utilities, fixtures, contract assertions
+    component.yaml
 
 /tooling
   /eslint
@@ -115,9 +136,29 @@ When a component outgrows Cloudflare-native storage or queueing:
 - optionally front the external service with the same Worker contract,
 - use Hyperdrive or standard outbound connectivity only at the adapter layer.
 
+## Composition and CI Model
+
+This repo uses [orun](https://orun-api.sourceplane.ai) with [stack-tectonic](https://github.com/sourceplane/stack-tectonic) for composition-driven CI and deployment.
+
+- **`intent.yaml`** at the repo root declares the stack-tectonic OCI source, discovery roots (`apps/`, `packages/`), and environment lane policies (dev → staging → production).
+- **`component.yaml`** in each app and package describes the composition type, environment subscriptions, and inputs. No app or package is wired into the CI workflow directly.
+- **`kiox.yaml`** pins the orun runtime version.
+
+Composition types used:
+
+| Type | Used by |
+|------|---------|
+| `cloudflare-worker-turbo` | All Workers in `apps/` except `web-console` |
+| `cloudflare-pages-turbo` | `apps/web-console` |
+| `turbo-package` | All packages in `packages/` |
+
+The CI workflow (`ci.yml`) runs `orun plan --changed` on every PR and push to main, then fans out `orun run` jobs per changed component. Deployment lanes are encoded in `intent.yaml` environments — there is no separate deploy workflow.
+
+Adding a new app or package requires only a `component.yaml` alongside the code. The workflow does not need to change.
+
 ## CI And Quality Gates
 
-Every change must pass:
+Every change must pass the gates enforced by the matched stack-tectonic composition:
 
 - lint
 - typecheck
