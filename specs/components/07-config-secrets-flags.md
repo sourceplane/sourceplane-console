@@ -12,10 +12,11 @@ Primary dependencies:
 - `specs/components/05-projects-environments.md`
 - `specs/components/06-resources-and-component-registry.md`
 
-Cloudflare primitives:
+Platform dependencies:
 
 - Workers
-- D1
+- Hyperdrive binding to primary Supabase Postgres
+- Supabase Postgres for config, secret metadata, and feature flag state
 - KV for read-heavy resolved config cache
 - Secrets Store for envelope-encryption keys
 

@@ -11,11 +11,12 @@ Primary dependencies:
 - `specs/contracts/event-envelope.schema.yaml`
 - `specs/components/00-foundation-and-tooling.md`
 
-Cloudflare primitives:
+Platform dependencies:
 
 - Workers
 - Queues
-- D1
+- Hyperdrive binding to primary Supabase Postgres
+- Supabase Postgres for the canonical event log, audit index, and delivery metadata
 - Workers Analytics Engine
 - R2 for dead-letter or replay archives
 
@@ -81,7 +82,7 @@ This component owns:
 ## Agent Freedom
 
 - Subscriber registration may be static configuration in V1 if dynamic registration is unnecessary.
-- The agent may store full event payloads in D1, R2, or a mixed model depending on size and query needs.
+- The agent may store full event payloads in Supabase Postgres, R2, or a mixed model depending on size and query needs.
 - Operational metrics may use Analytics Engine, structured logs, or both.
 
 ## Acceptance Criteria

@@ -13,10 +13,11 @@ Primary dependencies:
 - `specs/components/10-metering.md`
 - `specs/components/03-policy-authorization.md`
 
-Cloudflare primitives:
+Platform dependencies:
 
 - Workers
-- D1
+- Hyperdrive binding to primary Supabase Postgres
+- Supabase Postgres for billing-owned relational state
 - Queues
 - Secrets Store for provider credentials
 

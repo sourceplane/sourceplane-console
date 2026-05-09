@@ -176,15 +176,15 @@ example:
       tier: core
     annotations: {}
     componentRef:
-      name: cloudflare-d1
+      name: supabase-postgres
       version: 1.0.0
     generation: 2
     createdAt: "2026-04-22T12:00:00Z"
     updatedAt: "2026-04-22T12:05:00Z"
     deletedAt: null
   spec:
-    size: starter
-    regionHint: auto
+    tier: starter
+    schemaName: app_main
   status:
     phase: ready
     observedGeneration: 2
@@ -192,10 +192,10 @@ example:
       - type: Ready
         status: "true"
         reason: Provisioned
-        message: D1 database bound successfully.
+        message: Supabase Postgres database connected through Hyperdrive.
         updatedAt: "2026-04-22T12:05:00Z"
     outputs:
-      bindingName: MAIN_DB
+      hyperdriveBindingName: MAIN_DB
     lastDeploymentId: dep_123
     failure: null
   relationships: []

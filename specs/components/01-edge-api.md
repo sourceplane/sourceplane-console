@@ -36,7 +36,7 @@ Provide the single public HTTP entry point for the platform. The edge Worker is 
 
 ## Out Of Scope
 
-- direct writes to domain D1 databases
+- direct writes to domain Supabase Postgres schemas or any other domain-owned database tables
 - independent authorization policy decisions
 - domain-specific persistence logic
 

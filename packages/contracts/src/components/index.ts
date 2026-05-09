@@ -8,7 +8,15 @@ const openObjectSchema = z.record(z.string(), z.unknown());
 
 export const componentManifestApiVersion = "sourceplane.io/v1alpha1" as const;
 export const componentDefinitionKind = "ComponentDefinition" as const;
-export const componentInputTypes = ["string", "number", "boolean", "enum", "object", "array", "secret"] as const;
+export const componentInputTypes = [
+  "string",
+  "number",
+  "boolean",
+  "enum",
+  "object",
+  "array",
+  "secret",
+] as const;
 export const componentRuntimeModes = ["sync", "workflow"] as const;
 
 export type ComponentInputType = (typeof componentInputTypes)[number];
@@ -24,14 +32,14 @@ export const componentMetadataSchema = z
     summary: z.string().min(1),
     owner: nullableStringSchema.optional(),
     category: nullableStringSchema.optional(),
-    tags: z.array(z.string().min(1)).optional()
+    tags: z.array(z.string().min(1)).optional(),
   })
   .strict();
 export const componentInputUiSchema = z
   .object({
     control: z.string().min(1).optional(),
     group: nullableStringSchema.optional(),
-    secret: z.boolean().nullable().optional()
+    secret: z.boolean().nullable().optional(),
   })
   .strict();
 export const componentInputSchema = z
@@ -42,35 +50,37 @@ export const componentInputSchema = z
     default: z.unknown().optional(),
     description: nullableStringSchema.optional(),
     enumValues: nullableStringArraySchema.optional(),
-    ui: componentInputUiSchema.nullable().optional()
+    ui: componentInputUiSchema.nullable().optional(),
   })
   .strict();
 export const componentOutputSchema = z
   .object({
     name: z.string().min(1),
     type: z.string().min(1),
-    description: nullableStringSchema.optional()
+    description: nullableStringSchema.optional(),
   })
   .strict();
 export const componentDependencySchema = z
   .object({
     resourceType: z.string().min(1),
-    required: z.boolean().optional()
+    required: z.boolean().optional(),
   })
   .strict();
-export const componentPermissionsSchema = z
-  .object({
-    cloudflare: z
-      .object({})
-      .catchall(z.array(z.string().min(1)))
-      .optional()
-  })
-  .strict();
+const providerPermissionSchema = z
+  .object({})
+  .catchall(z.array(z.string().min(1)));
+export const componentPermissionsSchema = z.record(
+  z.string().min(1),
+  providerPermissionSchema
+);
 export const componentRuntimeSchema = z
   .object({
     mode: componentRuntimeModeSchema,
     handler: z.string().min(1),
-    statusMapping: z.record(z.string(), z.string().min(1)).nullable().optional()
+    statusMapping: z
+      .record(z.string(), z.string().min(1))
+      .nullable()
+      .optional(),
   })
   .strict();
 export const componentSpecSchema = z
@@ -81,7 +91,7 @@ export const componentSpecSchema = z
     dependencies: z.array(componentDependencySchema).optional(),
     permissions: componentPermissionsSchema.optional(),
     runtime: componentRuntimeSchema,
-    examples: z.array(openObjectSchema).optional()
+    examples: z.array(openObjectSchema).optional(),
   })
   .strict();
 export const componentManifestSchema = z
@@ -89,7 +99,7 @@ export const componentManifestSchema = z
     apiVersion: z.literal(componentManifestApiVersion),
     kind: z.literal(componentDefinitionKind),
     metadata: componentMetadataSchema,
-    spec: componentSpecSchema
+    spec: componentSpecSchema,
   })
   .strict();
 
@@ -100,13 +110,23 @@ export type ComponentDependency = z.infer<typeof componentDependencySchema>;
 export type ComponentPermissions = z.infer<typeof componentPermissionsSchema>;
 export type ComponentRuntime = z.infer<typeof componentRuntimeSchema>;
 export type ComponentSpec = z.infer<typeof componentSpecSchema>;
-export type SourceplaneComponentManifest = z.infer<typeof componentManifestSchema>;
+export type SourceplaneComponentManifest = z.infer<
+  typeof componentManifestSchema
+>;
 export type ComponentManifest = SourceplaneComponentManifest;
 
-export function assertValidComponentManifest(value: unknown): SourceplaneComponentManifest {
-  return assertWithSchema("SourceplaneComponentManifest", componentManifestSchema, value);
+export function assertValidComponentManifest(
+  value: unknown
+): SourceplaneComponentManifest {
+  return assertWithSchema(
+    "SourceplaneComponentManifest",
+    componentManifestSchema,
+    value
+  );
 }
 
-export function isComponentManifest(value: unknown): value is SourceplaneComponentManifest {
+export function isComponentManifest(
+  value: unknown
+): value is SourceplaneComponentManifest {
   return isWithSchema(componentManifestSchema, value);
 }

@@ -10,9 +10,10 @@ Sourceplane is not a single-purpose SaaS app. It is a reusable control plane fra
 
 ## Constitutional Rules
 
-### 1. Cloudflare-first now, extraction-safe later
+### 1. Cloudflare-first runtime, extraction-safe data plane
 
-- V1 must run fully on Cloudflare-managed primitives wherever practical.
+- V1 must run compute, routing, async work, caches, and public ingress on Cloudflare-managed primitives wherever practical.
+- Supabase Postgres is the primary relational data plane for product-owned state and must be reached from Workers through Hyperdrive.
 - Internal boundaries must still assume that any component may later move behind an external service or its own repo.
 - No domain may depend on a hosting-specific detail outside its adapter layer.
 
@@ -49,7 +50,7 @@ Sourceplane is not a single-purpose SaaS app. It is a reusable control plane fra
 ### 7. Business logic stays pure
 
 - Domain logic belongs in domain modules, not transport handlers and not platform adapters.
-- Workers, service bindings, D1, KV, Queues, R2, Secrets Store, Workflows, and Durable Objects are implementation adapters, not business policy.
+- Workers, service bindings, Hyperdrive, Supabase Postgres, D1, KV, Queues, R2, Secrets Store, Workflows, and Durable Objects are implementation adapters, not business policy.
 - Business rules must be testable without deploying to Cloudflare.
 
 ### 8. Secure by default
