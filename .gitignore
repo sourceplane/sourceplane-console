@@ -9,3 +9,16 @@ dist
 *.tsbuildinfo
 node_modules
 tmp
+
+# orun per-job staged workspaces
+.orun/runs/
+# orun execution state and plans (local runner artifacts)
+.orun/executions/
+.orun/plans/
+.orun/latest
+# workspace provider cache
+.workspace/
+# kiox lock
+kiox.lock
+# agent scripts
+agents/

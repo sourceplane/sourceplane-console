@@ -8,7 +8,8 @@ This app owns:
 - user bootstrap records
 - opaque bearer sessions and internal auth resolution
 - service-principal backed API keys
-- D1-backed persistence plus an identity event outbox
+- persistence via D1 (local/test) or Supabase Postgres via Cloudflare Hyperdrive (production)
+- an identity event outbox
 
 ## Public Surface Through The Edge
 
@@ -31,13 +32,37 @@ Internal hooks:
 
 ## Storage And Secrets
 
-Wrangler binds `IDENTITY_DB` to the Worker D1 database. Migrations live under `migrations/`.
+### D1 – Local Development And Tests
 
-Required secret:
+For local development and the test suite the Worker uses a Cloudflare D1 database bound as `IDENTITY_DB`. D1 migrations live under `migrations/` and are applied automatically by `wrangler dev --local` and the `@sourceplane/testing` helpers.
 
-- `IDENTITY_TOKEN_HASH_SECRET`
+### Supabase/Postgres – Production (via Hyperdrive)
 
-Optional generic email delivery configuration:
+In production the Worker prefers a Postgres connection provided by Cloudflare Hyperdrive. The binding must be named `IDENTITY_HYPERDRIVE` and configured in `wrangler.jsonc` for the target environment.
+
+**The binding is not committed to `wrangler.jsonc` because the Hyperdrive ID requires a real Cloudflare account and Supabase project.** A follow-up provisioning task is required to:
+
+1. Create the Supabase Postgres database.
+2. Apply the Postgres migration at `migrations-pg/0001_initial.sql` (uses the `identity` schema).
+3. Create a Cloudflare Hyperdrive resource pointing at the Supabase connection string.
+4. Add the resulting Hyperdrive ID to `wrangler.jsonc` under `env.production.hyperdrive`:
+
+```jsonc
+"hyperdrive": [
+  {
+    "binding": "IDENTITY_HYPERDRIVE",
+    "id": "<cloudflare-hyperdrive-id>"
+  }
+]
+```
+
+If `IDENTITY_HYPERDRIVE` is absent in production the Worker returns HTTP 500 immediately rather than silently falling back to D1.
+
+### Required Secret
+
+- `IDENTITY_TOKEN_HASH_SECRET` – set with `wrangler secret put IDENTITY_TOKEN_HASH_SECRET` in every environment.
+
+### Optional Email Delivery
 
 - vars: `AUTH_EMAIL_API_URL`, `AUTH_EMAIL_FROM`
 - secret: `AUTH_EMAIL_API_TOKEN`

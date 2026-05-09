@@ -22,6 +22,8 @@ import {
 
 import { D1IdentityRepository } from "./domain/d1-identity-repository.js";
 import { createLoginCodeDelivery } from "./domain/email-delivery.js";
+import { PostgresIdentityRepository } from "./domain/pg-identity-repository.js";
+import type { IdentityRepository } from "./domain/repository.js";
 import { createIdentityService } from "./domain/service.js";
 import type { IdentityWorkerEnv } from "./env.js";
 
@@ -31,16 +33,16 @@ export function createIdentityWorkerApp(): ExportedHandler<IdentityWorkerEnv> {
   return {
     async fetch(request: Request, env: IdentityWorkerEnv): Promise<Response> {
       const requestContext = createRequestContext(request, { trustRequestId: true });
-      const stage = parseDeploymentEnvironment(env.ENVIRONMENT);
-      const service = createIdentityService({
-        delivery: createLoginCodeDelivery(env, stage),
-        repository: new D1IdentityRepository(env.IDENTITY_DB),
-        serviceName: env.APP_NAME,
-        tokenHashSecret: resolveTokenHashSecret(env, stage)
-      });
       const url = new URL(request.url);
 
       try {
+        const stage = parseDeploymentEnvironment(env.ENVIRONMENT);
+        const service = createIdentityService({
+          delivery: createLoginCodeDelivery(env, stage),
+          repository: resolveIdentityRepository(env, stage),
+          serviceName: env.APP_NAME,
+          tokenHashSecret: resolveTokenHashSecret(env, stage)
+        });
         if (url.pathname === "/healthz") {
           return jsonSuccess(
             {
@@ -107,6 +109,26 @@ export function createIdentityWorkerApp(): ExportedHandler<IdentityWorkerEnv> {
       }
     }
   };
+}
+
+function resolveIdentityRepository(
+  env: IdentityWorkerEnv,
+  stage: ReturnType<typeof parseDeploymentEnvironment>
+): IdentityRepository {
+  if (env.IDENTITY_HYPERDRIVE) {
+    return new PostgresIdentityRepository(env.IDENTITY_HYPERDRIVE.connectionString);
+  }
+
+  if (stage === "production") {
+    throw new SourceplaneHttpError(
+      500,
+      "internal_error",
+      "No production database binding is configured. Set the IDENTITY_HYPERDRIVE Hyperdrive binding for the production environment."
+    );
+  }
+
+  // Local and preview environments fall back to D1 for development and the test suite.
+  return new D1IdentityRepository(env.IDENTITY_DB);
 }
 
 function resolveTokenHashSecret(env: IdentityWorkerEnv, stage: ReturnType<typeof parseDeploymentEnvironment>): string {
