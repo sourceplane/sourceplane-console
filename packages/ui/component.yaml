@@ -1,0 +1,22 @@
+apiVersion: sourceplane.io/v1
+kind: Component
+
+metadata:
+  name: sourceplane-ui
+
+spec:
+  type: turbo-package
+  domain: sourceplane-saas
+  subscribe:
+    environments:
+      - dev
+      - staging
+      - production
+  inputs:
+    nodeVersion: "22"
+    pnpmVersion: "10.7.1"
+  labels:
+    team: platform
+    layer: shared
+    surface: ui
+    runtime: node

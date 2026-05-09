@@ -18,17 +18,22 @@ Assumption: 4-6 autopilot coding agents plus 1 human reviewer or lead architect.
 - Review and freeze the constitution.
 - Review and freeze shared contract docs.
 - Confirm Cloudflare account layout, environment naming, and deployment permissions.
+- Pin stack-tectonic version in `intent.yaml` and orun runtime in `kiox.yaml`.
+- Confirm environment lane policies (dev / staging / production) and approval gates.
 
 Exit criteria:
 
 - Shared contract docs approved.
 - Delegation order confirmed.
+- `intent.yaml` and `kiox.yaml` merged to main.
+- `orun plan` runs cleanly against the empty discovery roots.
 
 ### Week 1: Foundation
 
-- Implement the workspace, tooling, root scripts, CI, and Worker scaffolds.
+- Implement the workspace, tooling, root scripts, and Worker scaffolds.
 - Materialize `packages/contracts` from the spec docs.
 - Stand up the public edge Worker skeleton.
+- Each new app and package must include a `component.yaml` so orun discovers it automatically.
 
 Delegation lanes:
 
@@ -41,6 +46,7 @@ Exit criteria:
 - Monorepo builds locally.
 - At least one Worker deploys.
 - Contract tests exist.
+- `orun plan --changed` produces a non-empty job matrix for every changed component.
 
 ### Weeks 2-3: Tenant core
 
