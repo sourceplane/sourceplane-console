@@ -10,8 +10,9 @@ Primary monorepo targets:
 Primary dependencies:
 
 - `specs/contracts/api-guidelines.md`
-- `specs/contracts/resource-contract.schema.yaml`
-- `specs/contracts/component-manifest.schema.yaml`
+- `specs/product-overview.md`
+- optional `specs/contracts/resource-contract.schema.yaml`
+- optional `specs/contracts/component-manifest.schema.yaml`
 - `specs/components/01-edge-api.md`
 
 Cloudflare primitives:
@@ -20,7 +21,7 @@ Cloudflare primitives:
 
 ## Intent
 
-Make the control plane scriptable and automation-friendly through a stable TypeScript SDK and a first-class CLI.
+Make the SaaS starter scriptable and automation-friendly through a stable TypeScript SDK and a first-class CLI.
 
 ## Scope
 
@@ -28,7 +29,8 @@ Make the control plane scriptable and automation-friendly through a stable TypeS
 - typed resource and component helpers
 - CLI auth flow
 - organization selection and context persistence
-- project, environment, resource, and deployment commands
+- organization, member, invite, project, environment, settings, API-key, webhook, usage, billing, and audit commands
+- optional resource and deployment commands
 - machine-readable output modes
 
 ## Out Of Scope
@@ -57,12 +59,20 @@ Make the control plane scriptable and automation-friendly through a stable TypeS
 - `whoami`
 - `org list`
 - `org use`
+- `org invite`
+- `org members`
 - `project create`
+- `project list`
 - `env create`
-- `component list`
-- `resource create`
-- `resource get`
-- `deployment get`
+- `api-key create`
+- `webhook create`
+- `usage summary`
+- `billing summary`
+- `audit list`
+- optional `component list`
+- optional `resource create`
+- optional `resource get`
+- optional `deployment get`
 
 ### Output Rules
 
@@ -78,7 +88,7 @@ Make the control plane scriptable and automation-friendly through a stable TypeS
 
 ## Acceptance Criteria
 
-- Every major public control-plane flow available in the web console is also available through the CLI or SDK.
+- Every major public SaaS starter flow available in the web console is also available through the CLI or SDK.
 - SDK consumers do not need to know internal Worker topology.
 - CLI output is stable enough for CI usage.
 

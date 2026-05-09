@@ -1,6 +1,6 @@
 # Runtime Orchestration
 
-Status: Ready for implementation
+Status: Optional starter extension
 
 Primary monorepo targets:
 
@@ -26,7 +26,7 @@ Platform dependencies:
 
 ## Intent
 
-Turn desired resource state into actual runtime state by executing versioned component logic safely, durably, and observably.
+Turn desired project-resource state into actual runtime state by executing versioned component logic safely, durably, and observably. Runtime orchestration is an optional extension for products that need managed resources or long-running workflows; it is not part of the minimum SaaS starter bootstrap.
 
 ## Scope
 
@@ -42,6 +42,7 @@ Turn desired resource state into actual runtime state by executing versioned com
 - owning component definitions
 - public API transport concerns
 - long-term billing aggregation
+- basic SaaS starter flows such as auth, organization creation, membership, projects, billing, audit, API keys, webhooks, and notifications
 
 ## Hard Contracts To Honor
 
@@ -72,7 +73,7 @@ Turn desired resource state into actual runtime state by executing versioned com
 - Deployment execution must be idempotent.
 - Only one active deployment may mutate a given resource at a time.
 - Status transitions must be reflected back into the canonical resource contract.
-- Failure payloads must be user-readable and safe to expose in the control plane.
+- Failure payloads must be user-readable and safe to expose in the starter console.
 
 ## Data Ownership
 
@@ -93,6 +94,7 @@ This component owns:
 
 - A new resource can trigger a deployment and transition through provisioning to ready or failed.
 - Duplicate deployment requests with the same intent do not create duplicate side effects.
+- Runtime work is scoped by `orgId + projectId` and never by resource or project ID alone.
 - Runtime execution can later move to another repo or compute environment without changing the resource contract.
 
 ## Extraction Seam

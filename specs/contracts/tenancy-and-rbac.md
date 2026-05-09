@@ -4,7 +4,9 @@ Status: Normative
 
 ## Core Principle
 
-Every meaningful entity belongs to an organization. Authorization starts with tenant scope, then applies role and policy checks.
+Every meaningful entity belongs to an organization. Authorization starts with tenant scope, then applies role, policy, billing entitlement, and domain-invariant checks.
+
+Organization is the tenant and billing boundary. Project is the operational boundary. Project-scoped authorization must always include both `orgId` and `projectId`.
 
 ## Canonical Actors
 
@@ -28,7 +30,7 @@ Project, environment, and resource scope always nest under an organization.
 
 - `owner`
 - `admin`
-- `builder`
+- `builder` (product label: Developer)
 - `viewer`
 - `billing_admin`
 
@@ -43,8 +45,8 @@ Environment- and resource-specific rules may narrow access further, but may not 
 ## Role Semantics
 
 - `owner`: full control, including billing, destructive actions, and role management
-- `admin`: manage org settings, members, projects, environments, and resources
-- `builder`: create and mutate projects, environments, resources, configs, and deployments
+- `admin`: manage org settings, members, invitations, projects, environments, webhooks, integrations, and operational resources
+- `builder`: create and mutate projects, environments, configs, API keys, webhooks, and operational resources. Product UI may label this role Developer.
 - `viewer`: read-only access to allowed scopes
 - `billing_admin`: billing and plan management without general operational admin rights
 
@@ -123,8 +125,11 @@ Rules:
 - Authorization is deny-by-default.
 - Every mutating route requires an explicit acting subject.
 - API keys and service principals must be bound to an organization and a role set.
+- Project-scoped API keys and service principals must also carry project scope and may not operate outside that organization/project pair.
+- Billing-sensitive and quota-sensitive operations must allow policy to consume entitlement or quota facts.
 - Cross-organization access is forbidden unless a future super-admin model is explicitly introduced.
 - Destructive actions require elevated roles and full audit logging.
+- Support/admin actions require an explicit support actor, reason, target organization, and audit event.
 
 ## Responsibility Split
 
@@ -142,6 +147,8 @@ Every authorization-protected mutation must capture:
 - resolved role or policy reason,
 - request ID,
 - resource target.
+
+At minimum, audit events are required for login, organization creation and deletion, member invitation, member removal, role change, project creation, project archival, API-key creation and revocation, webhook creation and deletion, billing updates, security-setting changes, and support/admin actions.
 
 ## V1 Policy Scope
 

@@ -3,7 +3,7 @@ kind: Intent
 
 metadata:
   name: sourceplane-saas
-  description: Sourceplane SaaS platform — Cloudflare-first multi-tenant control plane
+  description: Sourceplane SaaS starter bootstrap - Cloudflare-first multi-tenant SaaS foundation
 
 compositions:
   sources:

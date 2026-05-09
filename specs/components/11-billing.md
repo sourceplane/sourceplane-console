@@ -23,14 +23,17 @@ Platform dependencies:
 
 ## Intent
 
-Own plans, subscriptions, entitlements, invoice state, and payment-provider integration behind a platform contract.
+Own organization-level plans, subscriptions, entitlements, invoice state, trials, cancellation, billing portal access, and payment-provider integration behind a starter contract.
 
 ## Scope
 
 - plan catalog
+- billing customer lifecycle
 - subscription lifecycle
 - entitlement calculation
 - invoice and payment state mirror
+- trial, cancellation, upgrade, and downgrade flows
+- billing portal session creation
 - provider webhook handling
 
 ## Out Of Scope
@@ -49,10 +52,14 @@ Own plans, subscriptions, entitlements, invoice state, and payment-provider inte
 ### Public/Internal Methods
 
 - `listPlans`
+- `getBillingCustomer`
+- `createBillingCustomer`
 - `createSubscription`
 - `changeSubscription`
 - `cancelSubscription`
+- `createBillingPortalSession`
 - `getBillingSummary`
+- `listInvoices`
 - `getEntitlements`
 - `handleProviderWebhook`
 
@@ -62,6 +69,7 @@ Own plans, subscriptions, entitlements, invoice state, and payment-provider inte
 - `subscription.updated`
 - `subscription.canceled`
 - `invoice.generated`
+- `invoice.paid`
 - `payment.failed`
 - `entitlements.updated`
 
@@ -69,6 +77,8 @@ Own plans, subscriptions, entitlements, invoice state, and payment-provider inte
 
 - Billing must consume normalized metering outputs, not raw domain events.
 - Entitlements must be queryable by policy and product surfaces.
+- Organization is the V1 billing customer boundary; per-project billing is a future extension.
+- Project creation and expensive operations may be blocked by plan limits or quota facts.
 - Provider-specific fields must stay behind an adapter or mapping layer.
 
 ## Data Ownership
@@ -76,6 +86,7 @@ Own plans, subscriptions, entitlements, invoice state, and payment-provider inte
 This component owns:
 
 - plans
+- billing customers
 - subscriptions
 - entitlements
 - invoices
@@ -95,4 +106,4 @@ This component owns:
 
 ## Extraction Seam
 
-The billing Worker is the platform contract. The payment processor is an adapter behind it, not the source of truth for product entitlement decisions.
+The billing Worker is the starter contract. The payment processor is an adapter behind it, not the source of truth for product entitlement decisions.

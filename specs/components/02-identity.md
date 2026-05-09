@@ -34,6 +34,8 @@ Own all facts about who a user is and how an actor proves identity to the platfo
 - session issuance and validation
 - API keys and service-principal credentials
 - account bootstrap and profile basics
+- account security settings
+- security events owned by identity, with audit copies emitted through the events component
 
 ## Out Of Scope
 
@@ -52,6 +54,7 @@ Own all facts about who a user is and how an actor proves identity to the platfo
 
 - `createUser`
 - `getUser`
+- `updateUserProfile`
 - `startLogin`
 - `completeLogin`
 - `logout`
@@ -59,10 +62,11 @@ Own all facts about who a user is and how an actor proves identity to the platfo
 - `listApiKeys`
 - `createApiKey`
 - `revokeApiKey`
+- `listSecurityEvents`
 
 ### Minimum V1 Authentication Requirement
 
-V1 must ship with at least one first-party sign-in path that is Sourceplane-owned and served through the Worker runtime, such as email magic link or one-time code. Additional OAuth providers may be added through adapters, but hosted auth SaaS, including Supabase Auth, is not the control-plane source of truth unless a future spec explicitly changes that boundary.
+V1 must ship with at least one first-party sign-in path that is Sourceplane-owned and served through the Worker runtime, such as email magic link or one-time code. Additional OAuth providers may be added through adapters, but hosted auth SaaS, including Supabase Auth, is not the starter source of truth unless a future spec explicitly changes that boundary.
 
 ### Recommended Public Route Surface
 
@@ -171,6 +175,7 @@ This component must emit:
 - `session.revoked`
 - `api_key.created`
 - `api_key.revoked`
+- `identity.security_event_recorded`
 
 ## Data Ownership
 
@@ -182,6 +187,8 @@ This component owns records such as:
 - verification tokens
 - api keys
 - service principals
+- account security settings
+- identity security-event source facts
 
 ## Agent Freedom
 

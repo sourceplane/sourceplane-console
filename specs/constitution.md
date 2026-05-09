@@ -6,7 +6,7 @@ Applies to: every package, app, migration, API, event, UI surface, CLI command, 
 
 ## Purpose
 
-Sourceplane is not a single-purpose SaaS app. It is a reusable control plane framework for building and operating micro-SaaS products. The implementation must preserve that property even when short-term delivery pressure pushes toward convenience.
+Sourceplane is a reusable multi-tenant SaaS starter bootstrap. It must provide the durable foundation for products with organization-scoped tenancy, project separation, membership, billing, audit, metering, API access, notifications, webhooks, and support workflows. Product-specific resource orchestration may be layered on top, but it must not obscure the starter baseline or force every SaaS consumer into a runtime-orchestration product model.
 
 ## Constitutional Rules
 
@@ -29,11 +29,13 @@ Sourceplane is not a single-purpose SaaS app. It is a reusable control plane fra
 - Every persistent domain record must be traceable to an organization, directly or indirectly.
 - User-only ownership models are prohibited except for pre-organization bootstrap records such as pending sign-up sessions.
 
-### 4. Everything important is addressable as a resource
+### 4. Organization -> project separation is the product spine
 
-- Runtime-managed entities must follow a resource-oriented model with `kind`, `spec`, and `status`.
-- Project and environment are first-class scope boundaries.
-- Components are reusable definitions that create or manage resources; they are not ad hoc scripts.
+- Organization is the billing, ownership, membership, and audit boundary.
+- Project is the operational boundary.
+- Environment is an optional project sub-scope for configuration, deployment, or lifecycle separation.
+- Project data must never be queried, authorized, cached, audited, or metered by `projectId` alone; it must carry `orgId + projectId`.
+- Resource-oriented models with `kind`, `spec`, and `status` are allowed for product extension modules, but they are not required for every starter domain.
 
 ### 5. API, CLI, and UI parity
 
@@ -77,11 +79,12 @@ Sourceplane is not a single-purpose SaaS app. It is a reusable control plane fra
 - Cross-domain data access is forbidden outside published contracts.
 - Shared code may exist only for contracts, testing utilities, and generic infrastructure helpers.
 
-### 12. The component manifest is a product primitive
+### 12. Starter modules are product primitives
 
-- Component definitions must be portable and versioned.
-- Component manifests must be sufficient to drive validation, API handling, CLI flows, and UI form generation.
-- Runtime orchestration must consume the manifest rather than hardcoding per-component behavior.
+- Identity, organizations, membership, projects, policy, audit, metering, billing, API keys, webhooks, notifications, settings, and support workflows are first-class starter modules.
+- Optional component definitions for project resources must be portable and versioned when used.
+- If a module exposes manifest-driven resources, its manifests must be sufficient to drive validation, API handling, CLI flows, and UI form generation.
+- Runtime orchestration is an optional product extension and must consume published contracts rather than hardcoding per-component behavior.
 
 ## Definition Of Done
 

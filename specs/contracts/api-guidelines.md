@@ -16,12 +16,20 @@ This document defines the public HTTP contract style and the internal service-bo
 ### Path conventions
 
 - Use nouns for resources and sub-resources.
-- Prefer nested scope when it clarifies tenancy:
+- Tenant-scoped APIs MUST include the organization in the path unless the route is explicitly pre-organization bootstrap such as login.
+- Project-scoped APIs MUST include both `orgId` and `projectId`.
+- Prefer nested scope for starter modules:
   - `/v1/organizations/{orgId}/projects`
-  - `/v1/projects/{projectId}/environments`
-  - `/v1/resources/{resourceId}`
+  - `/v1/organizations/{orgId}/projects/{projectId}`
+  - `/v1/organizations/{orgId}/projects/{projectId}/environments`
+  - `/v1/organizations/{orgId}/projects/{projectId}/api-keys`
+  - `/v1/organizations/{orgId}/projects/{projectId}/webhooks`
+  - `/v1/organizations/{orgId}/billing`
+  - `/v1/organizations/{orgId}/audit`
+- Optional resource-extension routes follow the same tenant and project scope:
+  - `/v1/organizations/{orgId}/projects/{projectId}/environments/{environmentId}/resources/{resourceId}`
 - Avoid verb-heavy routes unless the action is truly non-CRUD:
-  - acceptable: `/v1/deployments/{deploymentId}/cancel`
+  - acceptable: `/v1/organizations/{orgId}/projects/{projectId}/deployments/{deploymentId}/cancel`
 
 ### Request and response encoding
 
@@ -59,7 +67,7 @@ This document defines the public HTTP contract style and the internal service-bo
 ### Idempotency
 
 - `POST` endpoints that create or trigger side effects must accept `Idempotency-Key`.
-- The server must scope idempotency records by actor and route.
+- The server must scope idempotency records by actor, route, organization, and project when a project is present.
 
 ### Traceability
 
@@ -72,6 +80,7 @@ This document defines the public HTTP contract style and the internal service-bo
 - Public auth uses bearer tokens and/or secure session cookies.
 - The public edge resolves the acting user or service principal before dispatching to internal services.
 - Organization selection must be explicit in path, token claims, or request context. Silent tenant guessing is prohibited.
+- Project selection must never be inferred from `projectId` alone; it must be resolved under the explicit organization scope.
 
 ## Internal Service Boundaries
 
@@ -136,9 +145,14 @@ The public API must support:
 - auth and session management
 - organizations and memberships
 - projects and environments
-- resources and component catalog
+- account and security settings
+- API keys and service principals
 - config and secret management metadata
-- deployments and status
-- audit queries
-- usage summaries
-- billing summaries and entitlements
+- notifications and delivery preferences
+- outgoing webhooks and delivery status
+- audit queries and security events
+- usage summaries and quotas
+- billing summaries, subscriptions, invoices, and entitlements
+- admin/support workflows where enabled
+- optional resources and component catalog
+- optional deployments and status

@@ -1,4 +1,4 @@
-# Config, Secrets, And Feature Flags
+# Config, Secrets, Settings, And Feature Flags
 
 Status: Ready for implementation
 
@@ -22,11 +22,12 @@ Platform dependencies:
 
 ## Intent
 
-Provide versioned non-secret configuration, encrypted secret storage, and feature-flag evaluation for organizations, projects, environments, and resources.
+Provide versioned non-secret configuration, tenant/project settings, encrypted secret storage, and feature-flag evaluation for organizations, projects, environments, and optional resources.
 
 ## Scope
 
 - config versions and promotion
+- organization, project, and environment settings
 - encrypted tenant secrets
 - effective config resolution by scope
 - feature flag definitions and evaluation
@@ -51,6 +52,8 @@ Provide versioned non-secret configuration, encrypted secret storage, and featur
 - `promoteConfigVersion`
 - `listConfigVersions`
 - `resolveEffectiveConfig`
+- `getSettings`
+- `updateSettings`
 - `putSecret`
 - `rotateSecret`
 - `listSecretMetadata`
@@ -61,6 +64,7 @@ Provide versioned non-secret configuration, encrypted secret storage, and featur
 
 - `config.version_created`
 - `config.promoted`
+- `settings.updated`
 - `secret.stored`
 - `secret.rotated`
 - `feature.updated`
@@ -77,6 +81,7 @@ This component owns:
 
 - config sets and versions
 - config entries
+- tenant and project settings records
 - secret metadata and encrypted payloads
 - feature flag definitions and evaluation rules
 

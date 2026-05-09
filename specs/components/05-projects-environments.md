@@ -21,13 +21,14 @@ Platform dependencies:
 
 ## Intent
 
-Provide the primary operating scopes under an organization: projects and environments.
+Provide Supabase-console-like project separation under an organization. Projects are the primary operational workspaces in the starter; environments are optional sub-scopes for configuration, deployment, or lifecycle separation.
 
 ## Scope
 
 - project CRUD and archival
 - environment CRUD and archival
 - project metadata
+- project settings
 - environment metadata and lifecycle state
 - default environment bootstrapping rules
 
@@ -40,6 +41,7 @@ Provide the primary operating scopes under an organization: projects and environ
 ## Hard Contracts To Honor
 
 - Multitenant scope rules from `specs/contracts/tenancy-and-rbac.md`
+- Project isolation invariant from `specs/domain-model.md`
 - Event envelope from `specs/contracts/event-envelope.schema.yaml`
 
 ## Required Capabilities
@@ -64,6 +66,13 @@ Provide the primary operating scopes under an organization: projects and environ
 - `environment.updated`
 - `environment.archived`
 
+### Project Isolation Rules
+
+- Project APIs, repository methods, cache keys, events, and audit entries must carry both `orgId` and `projectId`.
+- An environment lookup must carry `orgId + projectId + environmentId`.
+- Project slugs must be unique inside an organization, not globally.
+- Project deletion or archival must not orphan project-scoped API keys, webhooks, config, usage, audit history, or optional resources.
+
 ## Data Ownership
 
 This component owns:
@@ -81,6 +90,7 @@ This component owns:
 
 - A valid organization member with the correct role can create a project.
 - A project can own multiple environments.
+- A project cannot be read, updated, archived, or listed by `projectId` alone.
 - Other components can reference project and environment IDs without direct DB coupling.
 
 ## Extraction Seam

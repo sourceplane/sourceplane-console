@@ -22,7 +22,7 @@ Platform dependencies:
 
 ## Intent
 
-Provide a single authorization decision point that every protected domain operation can rely on.
+Provide a single authorization decision point that every protected starter domain operation can rely on.
 
 ## Scope
 
@@ -30,12 +30,15 @@ Provide a single authorization decision point that every protected domain operat
 - role-to-action mapping
 - optional scoped policy overrides
 - effective-permission queries for UI and CLI usage
+- entitlement and quota facts consumed as authorization inputs
 
 ## Out Of Scope
 
 - user identity proof
 - organization lifecycle
 - resource persistence
+- billing state ownership
+- metering state ownership
 
 ## Hard Contracts To Honor
 
@@ -60,6 +63,8 @@ This component emits only configuration-change events, not per-request decision 
 ### Decision Rules
 
 - Role assignments come from membership data.
+- Entitlement facts come from billing.
+- Quota facts come from metering.
 - Project and environment scope may narrow permissions.
 - A domain service may add invariant checks, but may not bypass policy decisions.
 
