@@ -1,6 +1,8 @@
 .DS_Store
+.orun
 .env
 .env.*
+.workspace
 .pnpm-store
 .turbo
 .wrangler
