@@ -84,8 +84,9 @@ kiox.yaml                  Orun runtime pin
 ### State ownership
 
 - Each bounded context owns its own persistence.
-- In the Cloudflare-first phase, that usually means one D1 database per domain Worker or, if temporarily shared, table namespaces that can be extracted without rewriting clients.
-- No Worker may query another domain's tables directly.
+- The primary relational store is Supabase Postgres, reached from Workers through Cloudflare Hyperdrive.
+- In V1, a single Supabase project/database may host multiple bounded contexts, but each context must own a logical schema or table namespace, service credentials, and migrations that can be extracted without rewriting clients.
+- No Worker may query another domain's tables or schemas directly.
 - Shared caches in KV must be derived, disposable copies of source-of-truth data.
 
 ### Internal communication
@@ -102,13 +103,15 @@ kiox.yaml                  Orun runtime pin
 - Domain logic must not live in `packages/shared`.
 - UI packages must not import internal Worker code.
 
-## Cloudflare Resource Mapping
+## Platform Resource Mapping
 
-Use Cloudflare primitives deliberately:
+Use platform primitives deliberately:
 
 - Workers: HTTP ingress and internal domain services
 - Service bindings: internal synchronous calls
-- D1: source-of-truth relational state for bounded contexts
+- Supabase Postgres: source-of-truth relational state for bounded contexts
+- Hyperdrive: Worker-to-Postgres connectivity, pooling, and regional routing at the adapter layer
+- D1: optional edge-local cache, test adapter, or managed customer resource; not the source of truth for platform domain state
 - KV: read-heavy cache and idempotency records
 - R2: artifacts, manifest bundles, export files, dead-letter archives
 - Queues: asynchronous delivery and fanout steps
@@ -116,6 +119,17 @@ Use Cloudflare primitives deliberately:
 - Durable Objects: per-resource locking, coordination, and strongly consistent local state where needed
 - Secrets Store and Worker secrets: platform credentials and envelope-encryption keys
 - Workers Analytics Engine: usage telemetry and operational analytics
+
+## Primary Database Operating Model
+
+Supabase Postgres is the primary operational database for product-owned relational state, including identity, membership, projects, resources, config metadata, runtime metadata, canonical events, metering rollups, and billing state.
+
+- Workers connect to Supabase Postgres through Hyperdrive bindings. Raw connection strings and Supabase service keys must stay in platform configuration and must not leak into domain logic.
+- Repository adapters own SQL, pooling assumptions, transaction boundaries, and Hyperdrive-specific behavior. Domain services receive typed repositories or unit-of-work abstractions, not platform database clients.
+- Each bounded context owns its schema or table namespace and migration history. Cross-context foreign keys are prohibited; use opaque IDs, service calls, and published events instead.
+- Every tenant-scoped table must include `org_id` directly or have an auditable path to `org_id` through a table owned by the same bounded context.
+- Domain mutations and outbox/event inserts that describe the same state change should commit atomically in the same Postgres transaction.
+- Supabase Auth, Realtime, Storage, and Edge Functions are not platform source-of-truth services unless a future spec explicitly adopts them. Sourceplane-owned identity remains in the identity component.
 
 ## Extraction Model
 
@@ -132,9 +146,9 @@ A component is considered extraction-ready when:
 When a component outgrows Cloudflare-native storage or queueing:
 
 - keep the public and internal contract stable,
-- replace the adapter layer,
+- move its owned Supabase schema/tables or replace the repository adapter,
 - optionally front the external service with the same Worker contract,
-- use Hyperdrive or standard outbound connectivity only at the adapter layer.
+- keep Hyperdrive or standard outbound connectivity only at the adapter layer.
 
 ## Composition and CI Model
 
@@ -146,11 +160,11 @@ This repo uses [orun](https://orun-api.sourceplane.ai) with [stack-tectonic](htt
 
 Composition types used:
 
-| Type | Used by |
-|------|---------|
+| Type                      | Used by                                     |
+| ------------------------- | ------------------------------------------- |
 | `cloudflare-worker-turbo` | All Workers in `apps/` except `web-console` |
-| `cloudflare-pages-turbo` | `apps/web-console` |
-| `turbo-package` | All packages in `packages/` |
+| `cloudflare-pages-turbo`  | `apps/web-console`                          |
+| `turbo-package`           | All packages in `packages/`                 |
 
 The CI workflow (`ci.yml`) runs `orun plan --changed` on every PR and push to main, then fans out `orun run` jobs per changed component. Deployment lanes are encoded in `intent.yaml` environments — there is no separate deploy workflow.
 

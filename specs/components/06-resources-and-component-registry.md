@@ -13,10 +13,11 @@ Primary dependencies:
 - `specs/contracts/event-envelope.schema.yaml`
 - `specs/components/05-projects-environments.md`
 
-Cloudflare primitives:
+Platform dependencies:
 
 - Workers
-- D1
+- Hyperdrive binding to primary Supabase Postgres
+- Supabase Postgres for resource registry metadata and relationship state
 - R2 for stored manifests or packaged artifacts
 - KV for catalog cache if needed
 
@@ -85,7 +86,7 @@ This component owns:
 
 ## Agent Freedom
 
-- The agent may choose whether manifests are stored directly in D1, in R2 with D1 metadata, or both.
+- The agent may choose whether manifests are stored directly in Supabase Postgres, in R2 with Supabase Postgres metadata, or both.
 - The agent may choose how resource graph queries are represented internally.
 - Resource patch semantics may use full replace or structured partial update if the public contract is explicit.
 

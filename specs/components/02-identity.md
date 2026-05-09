@@ -14,10 +14,11 @@ Primary dependencies:
 - `specs/contracts/tenancy-and-rbac.md`
 - `specs/components/00-foundation-and-tooling.md`
 
-Cloudflare primitives:
+Platform dependencies:
 
 - Workers
-- D1
+- Hyperdrive binding to primary Supabase Postgres
+- Supabase Postgres for identity-owned relational state
 - KV for derived session cache if needed
 - Secrets Store for signing and encryption keys
 
@@ -61,7 +62,7 @@ Own all facts about who a user is and how an actor proves identity to the platfo
 
 ### Minimum V1 Authentication Requirement
 
-V1 must ship with at least one first-party sign-in path that is fully platform-owned on Cloudflare, such as email magic link or one-time code. Additional OAuth providers may be added through adapters, but hosted auth SaaS is not the control-plane source of truth.
+V1 must ship with at least one first-party sign-in path that is Sourceplane-owned and served through the Worker runtime, such as email magic link or one-time code. Additional OAuth providers may be added through adapters, but hosted auth SaaS, including Supabase Auth, is not the control-plane source of truth unless a future spec explicitly changes that boundary.
 
 ### Recommended Public Route Surface
 
@@ -79,7 +80,7 @@ Example request body for `POST /v1/auth/login/start`:
 
 ```json
 {
-	"email": "user@example.com"
+  "email": "user@example.com"
 }
 ```
 
@@ -87,19 +88,19 @@ Example success envelope for `POST /v1/auth/login/start`:
 
 ```json
 {
-	"data": {
-		"challengeId": "chl_123",
-		"delivery": {
-			"mode": "local_debug",
-			"emailHint": "u***@example.com",
-			"code": "123456"
-		},
-		"expiresAt": "2026-04-23T12:05:00.000Z"
-	},
-	"meta": {
-		"cursor": null,
-		"requestId": "req_123"
-	}
+  "data": {
+    "challengeId": "chl_123",
+    "delivery": {
+      "mode": "local_debug",
+      "emailHint": "u***@example.com",
+      "code": "123456"
+    },
+    "expiresAt": "2026-04-23T12:05:00.000Z"
+  },
+  "meta": {
+    "cursor": null,
+    "requestId": "req_123"
+  }
 }
 ```
 
@@ -107,28 +108,28 @@ Example success envelope for `POST /v1/auth/login/complete`:
 
 ```json
 {
-	"data": {
-		"session": {
-			"actor": {
-				"id": "usr_123",
-				"type": "user"
-			},
-			"expiresAt": "2026-04-30T12:00:00.000Z",
-			"id": "ses_123",
-			"organizationId": null,
-			"token": "sps_ses_123.secret",
-			"tokenType": "bearer"
-		},
-		"user": {
-			"createdAt": "2026-04-23T12:00:00.000Z",
-			"id": "usr_123",
-			"primaryEmail": "user@example.com"
-		}
-	},
-	"meta": {
-		"cursor": null,
-		"requestId": "req_123"
-	}
+  "data": {
+    "session": {
+      "actor": {
+        "id": "usr_123",
+        "type": "user"
+      },
+      "expiresAt": "2026-04-30T12:00:00.000Z",
+      "id": "ses_123",
+      "organizationId": null,
+      "token": "sps_ses_123.secret",
+      "tokenType": "bearer"
+    },
+    "user": {
+      "createdAt": "2026-04-23T12:00:00.000Z",
+      "id": "usr_123",
+      "primaryEmail": "user@example.com"
+    }
+  },
+  "meta": {
+    "cursor": null,
+    "requestId": "req_123"
+  }
 }
 ```
 
@@ -136,28 +137,28 @@ Example success envelope for `GET /v1/auth/api-keys`:
 
 ```json
 {
-	"data": {
-		"apiKeys": [
-			{
-				"createdAt": "2026-04-23T12:00:00.000Z",
-				"expiresAt": null,
-				"id": "key_123",
-				"label": "CI token",
-				"lastUsedAt": null,
-				"prefix": "spk_key_123",
-				"revokedAt": null,
-				"servicePrincipal": {
-					"id": "spn_123",
-					"organizationId": "org_123",
-					"roleNames": ["builder"]
-				}
-			}
-		]
-	},
-	"meta": {
-		"cursor": null,
-		"requestId": "req_123"
-	}
+  "data": {
+    "apiKeys": [
+      {
+        "createdAt": "2026-04-23T12:00:00.000Z",
+        "expiresAt": null,
+        "id": "key_123",
+        "label": "CI token",
+        "lastUsedAt": null,
+        "prefix": "spk_key_123",
+        "revokedAt": null,
+        "servicePrincipal": {
+          "id": "spn_123",
+          "organizationId": "org_123",
+          "roleNames": ["builder"]
+        }
+      }
+    ]
+  },
+  "meta": {
+    "cursor": null,
+    "requestId": "req_123"
+  }
 }
 ```
 
@@ -186,7 +187,7 @@ This component owns records such as:
 
 - The agent may choose opaque sessions, signed sessions, or a hybrid model.
 - The agent may choose passwordless email, passkeys, or both for the initial first-party login method.
-- The agent may use D1 directly or through a repository layer.
+- The agent must persist identity state in Supabase Postgres through a repository layer. SQL, Hyperdrive connectivity, and transaction details belong inside the persistence adapter.
 
 ## Acceptance Criteria
 

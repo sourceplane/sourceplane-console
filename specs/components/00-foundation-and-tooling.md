@@ -59,7 +59,9 @@ Bootstrap a production-grade Cloudflare monorepo that all later bounded contexts
 ### Environment Management
 
 - Typed env bindings for Workers.
+- Typed Hyperdrive bindings for Workers that need the primary Supabase Postgres database.
 - Clear separation between local, preview, and production configuration.
+- Local, preview, and production database targets must be selected through environment configuration, not hardcoded connection strings.
 - Secrets must be referenced through Wrangler and Secrets Store conventions, not `.env` files committed to git.
 
 ### CI

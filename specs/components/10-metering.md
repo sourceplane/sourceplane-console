@@ -12,12 +12,13 @@ Primary dependencies:
 - `specs/components/06-resources-and-component-registry.md`
 - `specs/components/09-events-audit-observability.md`
 
-Cloudflare primitives:
+Platform dependencies:
 
 - Workers
 - Queues
 - Workers Analytics Engine
-- D1
+- Hyperdrive binding to primary Supabase Postgres
+- Supabase Postgres for metering rollups, quota state, and usage query indexes
 - KV for hot quota lookups if needed
 
 ## Intent
@@ -76,7 +77,7 @@ This component owns:
 
 ## Agent Freedom
 
-- The agent may use Analytics Engine for raw writes and D1 for rollups.
+- The agent may use Analytics Engine for raw high-volume writes and Supabase Postgres for rollups, quota state, and billing-facing usage ledgers.
 - The agent may implement quotas as synchronous guards, async alerts, or both depending on the action path.
 - The exact usage dimensions may start small as long as the ledger is additive and extensible.
 

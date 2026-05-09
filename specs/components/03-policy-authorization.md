@@ -13,10 +13,11 @@ Primary dependencies:
 - `specs/contracts/event-envelope.schema.yaml`
 - `specs/components/00-foundation-and-tooling.md`
 
-Cloudflare primitives:
+Platform dependencies:
 
 - Workers
-- D1 for policy overrides if needed
+- Hyperdrive binding to primary Supabase Postgres
+- Supabase Postgres for policy overrides and versioned role maps if persistence is needed
 - optional KV for compiled policy cache
 
 ## Intent

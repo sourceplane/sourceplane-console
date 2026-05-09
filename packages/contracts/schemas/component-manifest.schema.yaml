@@ -138,14 +138,12 @@ properties:
               type: boolean
       permissions:
         type: object
-        additionalProperties: false
-        properties:
-          cloudflare:
-            type: object
-            additionalProperties:
-              type: array
-              items:
-                type: string
+        additionalProperties:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
       runtime:
         type: object
         additionalProperties: false
@@ -175,15 +173,16 @@ example:
   apiVersion: sourceplane.io/v1alpha1
   kind: ComponentDefinition
   metadata:
-    name: cloudflare-d1
+    name: supabase-postgres
     version: 1.0.0
-    displayName: Cloudflare D1 Database
-    summary: Creates and manages a D1 database resource.
+    displayName: Supabase Postgres Database
+    summary: Creates and manages a Supabase Postgres database resource or schema.
     owner: sourceplane
     category: data
     tags:
       - database
-      - cloudflare
+      - supabase
+      - postgres
   spec:
     resourceType: database.instance
     inputs:
@@ -195,31 +194,43 @@ example:
           control: text
           group: basics
           secret: false
-      - name: size
+      - name: tier
         type: enum
         required: true
         default: starter
         enumValues:
           - starter
           - growth
-        description: Sizing hint for plan and quota checks.
+        description: Sizing hint for plan, quota, and connection-pool checks.
         ui:
           control: select
           group: basics
           secret: false
-    outputs:
-      - name: bindingName
+      - name: schemaName
         type: string
-        description: Worker binding name used by dependents.
+        required: false
+        description: Optional logical schema name when this resource is provisioned inside an existing Supabase database.
+        ui:
+          control: text
+          group: basics
+          secret: false
+    outputs:
+      - name: hyperdriveBindingName
+        type: string
+        description: Hyperdrive binding name used by dependent Workers.
     dependencies: []
     permissions:
       cloudflare:
-        d1:
-          - create
+        hyperdrive:
           - bind
+      supabase:
+        postgres:
+          - create_schema
+          - migrate
+          - rotate_credentials
     runtime:
       mode: workflow
-      handler: provision-cloudflare-d1
+      handler: provision-supabase-postgres
       statusMapping:
         success: ready
         pending: provisioning
@@ -228,4 +239,5 @@ example:
       - name: starter-db
         spec:
           name: main-db
-          size: starter
+          tier: starter
+          schemaName: app_main

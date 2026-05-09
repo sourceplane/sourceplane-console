@@ -14,10 +14,11 @@ Primary dependencies:
 - `specs/components/02-identity.md`
 - `specs/components/03-policy-authorization.md`
 
-Cloudflare primitives:
+Platform dependencies:
 
 - Workers
-- D1
+- Hyperdrive binding to primary Supabase Postgres
+- Supabase Postgres for membership-owned relational state
 - Queues optional for invite email dispatch
 
 ## Intent

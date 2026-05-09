@@ -11,21 +11,21 @@ export const validResourceFixture: SourceplaneResourceContract = {
     environmentId: "env_prod",
     name: "main-db",
     labels: {
-      tier: "core"
+      tier: "core",
     },
     annotations: {},
     componentRef: {
-      name: "cloudflare-d1",
-      version: "1.0.0"
+      name: "supabase-postgres",
+      version: "1.0.0",
     },
     generation: 2,
     createdAt: "2026-04-22T12:00:00Z",
     updatedAt: "2026-04-22T12:05:00Z",
-    deletedAt: null
+    deletedAt: null,
   },
   spec: {
-    size: "starter",
-    regionHint: "auto"
+    tier: "starter",
+    schemaName: "app_main",
   },
   status: {
     phase: "ready",
@@ -35,17 +35,17 @@ export const validResourceFixture: SourceplaneResourceContract = {
         type: "Ready",
         status: "true",
         reason: "Provisioned",
-        message: "D1 database bound successfully.",
-        updatedAt: "2026-04-22T12:05:00Z"
-      }
+        message: "Supabase Postgres database connected through Hyperdrive.",
+        updatedAt: "2026-04-22T12:05:00Z",
+      },
     ],
     outputs: {
-      bindingName: "MAIN_DB"
+      hyperdriveBindingName: "MAIN_DB",
     },
     lastDeploymentId: "dep_123",
-    failure: null
+    failure: null,
   },
-  relationships: []
+  relationships: [],
 };
 
 export const invalidResourceFixture = {
@@ -60,14 +60,14 @@ export const invalidResourceFixture = {
     name: "main-db",
     generation: 2,
     createdAt: "2026-04-22T12:00:00Z",
-    updatedAt: "2026-04-22T12:05:00Z"
+    updatedAt: "2026-04-22T12:05:00Z",
   },
   spec: {
-    size: "starter"
+    size: "starter",
   },
   status: {
     phase: "queued",
     observedGeneration: 2,
-    conditions: []
-  }
+    conditions: [],
+  },
 };
