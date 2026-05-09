@@ -22,8 +22,9 @@ For every cycle:
 11. Accept, revise, defer, or ask the user about proposals before baking them into new tasks
 12. Select next highest-leverage bounded task
 13. Generate detailed prompt file
+13a. Update `/ai/state.json` — set `task_agent` to the path of the file just written (task or verify `.md`); do this after every file produced, keeping it current
 14. Wait for worker result
-15. Update state and the compact context files
+15. Update state and the compact context files (also update `task_agent` if a verify report was the last file written)
 16. Repeat
 ---
 # Core Principle
@@ -142,9 +143,12 @@ Rules:
   "completed": [1,2,3],
   "repo_health": "yellow",
   "next_focus": "v2-db-foundation",
-  "last_verified": "2026-05-08"
+  "last_verified": "2026-05-08",
+  "task_agent": "/ai/tasks/task-0021.md"
 }
 ```
+
+`task_agent` always holds the path to the most recently produced task or verify `.md` file. Update it immediately after writing each file — do not batch.
 
 ⸻
 
