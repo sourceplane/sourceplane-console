@@ -14,12 +14,13 @@
     "deploy": "node ../../tooling/scripts/run-wrangler-deploy.mjs",
     "dev": "wrangler dev --local",
     "lint": "eslint src test",
-    "test": "vitest run test/identity-worker.integration.test.ts",
+    "test": "vitest run test/identity-worker.integration.test.ts test/repository-selection.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@sourceplane/contracts": "workspace:*",
-    "@sourceplane/shared": "workspace:*"
+    "@sourceplane/shared": "workspace:*",
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
     "@sourceplane/testing": "workspace:*",

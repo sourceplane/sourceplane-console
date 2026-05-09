@@ -11,3 +11,9 @@ dist
 *.tsbuildinfo
 node_modules
 tmp
+
+# orun per-job staged workspaces
+.orun/runs/
+
+# orun per-job staged workspaces
+.orun/runs/

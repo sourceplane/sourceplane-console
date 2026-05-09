@@ -39,6 +39,14 @@
           "migrations_dir": "migrations"
         }
       ],
+      // Hyperdrive binding wires the preview Worker to the shared Supabase Postgres
+      // database. The D1 binding is kept for any fallback or migration tooling.
+      "hyperdrive": [
+        {
+          "binding": "IDENTITY_HYPERDRIVE",
+          "id": "d9c62c4acf934dd7bb82f63ed02db564"
+        }
+      ],
       "vars": {
         "APP_NAME": "identity-worker",
         "AUTH_LOGIN_DELIVERY_MODE": "local_debug",
@@ -53,6 +61,14 @@
           "database_name": "sourceplane-identity-production",
           "database_id": "22222222-2222-2222-2222-222222222222",
           "migrations_dir": "migrations"
+        }
+      ],
+      // Hyperdrive binding wires the production Worker to Supabase Postgres.
+      // The Worker will throw a 500 at startup if this binding is absent.
+      "hyperdrive": [
+        {
+          "binding": "IDENTITY_HYPERDRIVE",
+          "id": "d9c62c4acf934dd7bb82f63ed02db564"
         }
       ],
       "vars": {
