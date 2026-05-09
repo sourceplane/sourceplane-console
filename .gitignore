@@ -1,4 +1,5 @@
 .DS_Store
+.orun
 .env
 .env.*
 .pnpm-store

@@ -1,0 +1,3 @@
+#!/bin/sh
+set -eu
+KIOX_INTERNAL_CLI=1 exec '/Users/irinelinson/.local/bin/kiox' --kiox-home '/Users/irinelinson/sourceplane/sourceplane-saas/.workspace' __shim --workspace-root '/Users/irinelinson/sourceplane/sourceplane-saas' --alias 'orun' --tool 'orun' -- "$@"

@@ -1,0 +1,16 @@
+{
+  "goal": "Supabase/Postgres-backed multi-organization Sourceplane SaaS control plane",
+  "current_task": 1,
+  "completed": [],
+  "repo_health": "yellow",
+  "next_focus": "supabase-hyperdrive-persistence-seam",
+  "last_verified": "2026-05-10",
+  "task_agent": "ai/tasks/task-0001.md",
+  "notes": [
+    "No prior ai/ state existed in this checkout; task 0001 bootstraps the agent loop state.",
+    "The active spec corpus in this repository is specs/. There is no spec/v2/ tree yet.",
+    "Local quality gates were green before task 0001 was emitted: pnpm lint, typecheck, test, build; kiox -- orun plan --changed returned 0 jobs on the clean tree.",
+    "Supabase database exists and Cloudflare Hyperdrive is configured as sourceplane-db; Cloudflare account ID is f9270f828799775bebf9315248fdf717.",
+    "All implementation and verification tasks must run local kiox -- orun plan --changed and kiox -- orun run --changed, and must directly verify Cloudflare resources created or updated in task scope."
+  ]
+}
