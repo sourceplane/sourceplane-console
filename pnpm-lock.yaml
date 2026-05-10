@@ -255,6 +255,12 @@ importers:
 
   tooling/eslint: {}
 
+  tooling/scripts:
+    devDependencies:
+      vitest:
+        specifier: ^3
+        version: 3.2.4(@types/node@22.19.17)(jsdom@25.0.1)(yaml@2.8.3)
+
   tooling/tsconfig: {}
 
 packages:
